@@ -119,6 +119,11 @@ static int __init skeleton_init(void)
         buffers = kzalloc(sizeof(char*) * instances, GFP_KERNEL);
         for (i = 0; i < instances; i++)
             buffers[i] = kzalloc(BUFFER_SZ, GFP_KERNEL);
+
+        // Log major et minor numbers
+        
+        for (i = 0; i < instances; i++)
+            pr_info("Device registered: major=%d, minors=%d", MAJOR(skeleton_dev), MINOR(skeleton_dev) + i);
     }
 
     pr_info("Linux module skeleton loaded\n");
