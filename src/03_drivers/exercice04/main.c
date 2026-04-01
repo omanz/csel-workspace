@@ -1,3 +1,17 @@
+/*
+ * main.c
+ *
+ * Ce programme permet d’accéder à ces pilotes orientés caractère. 
+ * L’application écris un texte dans le pilote et le relis.
+ * Elle prend en paramètre le chemin vers le device node créé par mknod.
+ *
+ * Usage :
+ *   ./app /chemin/vers/le/mknode
+ *
+ * Exemple :
+ *   mknod /dev/mymodule0 c 511 0
+ *   ./app /tmp/mymodule0
+ */
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
