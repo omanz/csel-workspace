@@ -1,4 +1,17 @@
-/* skeleton.c */
+/*
+ * skeleton.c 
+ *
+ * module pour exposer des interfaces dans le noyau Linux vers l'espace utilisateur
+ * 
+ * 3. CLASS : création d'un device sysfs dans une classe (/sys/class/my_sysfs_class/my_sysfs_device)
+ * 2. MISC : création d'un device simple (/dev/mymodule et /sys/class/misc/mymodule)
+ * 3. PLATFORM : création d'un device platform simulant
+ *    un périphérique matériel
+ * Le module possède 2 attributs accessibles en lecture/ecriture:
+ *  - val : int
+ *  - cfg : struct
+ */
+ 
 #include <linux/init.h>   /* needed for macros */
 #include <linux/kernel.h> /* needed for debugging */
 #include <linux/module.h> /* needed by all modules */
@@ -12,8 +25,8 @@
 #include <linux/platform_device.h> /* needed for sysfs handling */
 
 //#define MISC
-//#define PLATFORM
-#define CLASS
+#define PLATFORM
+//#define CLASS
 
 struct skeleton_config {
     int id;
@@ -22,9 +35,11 @@ struct skeleton_config {
     char descr[30];
 };
 
+// valeurs accessibles dans /sys
 static struct skeleton_config config;
 static int val;
 
+// methodes pour la variable val
 ssize_t sysfs_show_val(struct device* dev,
                        struct device_attribute* attr,
                        char* buf)
@@ -40,8 +55,10 @@ ssize_t sysfs_store_val(struct device* dev,
     val = simple_strtol(buf, 0, 10);
     return count;
 }
+// enregistrement de la variable
 DEVICE_ATTR(val, 0664, sysfs_show_val, sysfs_store_val);
 
+// methodes pour la variable config
 ssize_t sysfs_show_cfg(struct device* dev,
                        struct device_attribute* attr,
                        char* buf)
@@ -67,6 +84,7 @@ ssize_t sysfs_store_cfg(struct device* dev,
            config.descr);
     return count;
 }
+// enregistrement de la variable
 DEVICE_ATTR(cfg, 0664, sysfs_show_cfg, sysfs_store_cfg);
 
 
@@ -101,20 +119,26 @@ static int __init skeleton_init(void)
     int status = 0;
 
 #ifdef MISC
+    // crée le device de type caractère /dev/mymodule qui reagit au read/write si on les as définis
+    // crée une entrée dans /sys/class/misc/
     if (status == 0) status = misc_register(&misc_device);
     if (status == 0) status = device_create_file(misc_device.this_device, &dev_attr_val);
     if (status == 0) status = device_create_file(misc_device.this_device, &dev_attr_cfg);
 #endif
 
 #ifdef PLATFORM
+    // crée une entrée sous /sys/devices/platform/mymodule/
 	if (status == 0) status = platform_device_register (&platform_device);
     if (status == 0) status = device_create_file (&platform_device.dev, &dev_attr_val);
  	if (status == 0) status = device_create_file (&platform_device.dev, &dev_attr_cfg);
 #endif
 
 #ifdef CLASS
+    // cree une entrée dans /sys/class/my_sysfs_class/
     sysfs_class = class_create(THIS_MODULE, "my_sysfs_class");
+    // cree une entree /sys/class/my_sysfs_class/my_sysfs_device/ -> ../../devices/virtual/my_sysfs_class/my_sysfs_device
     sysfs_device = device_create(sysfs_class, NULL, 0, NULL, "my_sysfs_device");
+    // crée les fichiers pour les parametres sous /sys/class/my_sysfs_class/my_sysfs_device/nomparam. Le nomparam depend du premier paramètre de DEVICE_ATTR 
     if (status == 0) status = device_create_file(sysfs_device, &dev_attr_val);
  	if (status == 0) status = device_create_file(sysfs_device, &dev_attr_cfg);
 #endif
@@ -145,6 +169,7 @@ static void __exit skeleton_exit(void)
     pr_info("Linux module skeleton unloaded\n");
 }
 
+// crée l'entrée dans /sys/module
 module_init(skeleton_init);
 module_exit(skeleton_exit);
 
