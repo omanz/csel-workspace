@@ -198,8 +198,9 @@ static int __init skeleton_init(void)
 #endif
 
 #ifdef PLATFORM
-    // register read/write operation if we create a /dev/ entry
+    // creera une entree dans /dev grace a la definition de .dev.devt
     platform_device.dev.devt = skeleton_dev;
+    // crée une entrée sous /sys/devices/platform/mymodule/
 	if (status == 0) status = platform_device_register (&platform_device);
     if (status == 0) status = device_create_file (&platform_device.dev, &dev_attr_val);
  	if (status == 0) status = device_create_file (&platform_device.dev, &dev_attr_cfg);
