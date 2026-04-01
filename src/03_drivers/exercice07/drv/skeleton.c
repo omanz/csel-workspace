@@ -38,12 +38,24 @@ irqreturn_t gpio_isr(int irq, void* handle)
     return IRQ_HANDLED;
 }
 
+// decremente le nombre d'interruption et retourne le nombre qu'il y avait avant décrémentation
 static ssize_t skeleton_read(struct file* f,
                              char __user* buf,
                              size_t sz,
                              loff_t* off)
 {
-    return 0;
+    char kbuf[32];
+    int nb, count;
+
+    if (*off > 0) return 0;
+
+    // decremente atomiquement mais pour obtenir le resultat avant l'operation, on ajoute 1
+    // un read puis un dec aurait amené une race condition
+    nb = atomic_dec_return(&nb_of_interrupts) + 1;
+    count = snprintf(kbuf, sizeof(kbuf), "%d\n", nb);
+    if (copy_to_user(buf, kbuf, count) != 0) return -EFAULT;
+    *off += count;
+    return count;
 }
 
 static unsigned int skeleton_poll(struct file* f, poll_table* wait)
@@ -53,7 +65,6 @@ static unsigned int skeleton_poll(struct file* f, poll_table* wait)
     if (atomic_read(&nb_of_interrupts) != 0) {
         mask |= POLLIN | POLLRDNORM; /* read operation */
         /* mask |= POLLOUT | POLLWRNORM;   write operation */
-        atomic_dec(&nb_of_interrupts);
         pr_info("polling thread waked-up...\n");
     }
     return mask;
