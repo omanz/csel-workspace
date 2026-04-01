@@ -22,6 +22,7 @@ static void __exit skeleton_exit(void)
 	pr_info ("Linux module skeleton unloaded\n");
 }
 
+// crée l'entrée dans /sys/module
 module_init (skeleton_init);
 module_exit (skeleton_exit);
 
