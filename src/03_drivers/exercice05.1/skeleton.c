@@ -182,6 +182,7 @@ static int __init skeleton_init(void)
     int status = 0;
 
 #ifndef MISC
+    // cree les major et minor dynamiquement
     status = alloc_chrdev_region(&skeleton_dev, 0, 1, "mymodule");
     if (status == 0) {
         cdev_init(&skeleton_cdev, &skeleton_fops);
@@ -197,6 +198,7 @@ static int __init skeleton_init(void)
 #endif
 
 #ifdef PLATFORM
+    // register read/write operation if we create a /dev/ entry
     platform_device.dev.devt = skeleton_dev;
 	if (status == 0) status = platform_device_register (&platform_device);
     if (status == 0) status = device_create_file (&platform_device.dev, &dev_attr_val);
@@ -204,7 +206,10 @@ static int __init skeleton_init(void)
 #endif
 
 #ifdef CLASS
+    // cree une entrée dans /sys/class/my_sysfs_class/
     sysfs_class = class_create(THIS_MODULE, "my_sysfs_class");
+    // cree une entree /sys/class/my_sysfs_class/my_sysfs_device/ -> ../../devices/virtual/my_sysfs_class/my_sysfs_device
+    // cree une entree dans /dev grace a skeleton_dev
     sysfs_device = device_create(sysfs_class, NULL, skeleton_dev, NULL, "my_sysfs_device");
     if (status == 0) status = device_create_file(sysfs_device, &dev_attr_val);
  	if (status == 0) status = device_create_file(sysfs_device, &dev_attr_cfg);
@@ -229,7 +234,7 @@ static void __exit skeleton_exit(void)
 #ifdef CLASS
     device_remove_file(sysfs_device, &dev_attr_val);
     device_remove_file(sysfs_device, &dev_attr_cfg);
-    device_destroy(sysfs_class, 0);
+    device_destroy(sysfs_class, skeleton_dev);
     class_destroy(sysfs_class);
 #endif
 
