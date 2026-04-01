@@ -72,8 +72,11 @@ DEVICE_ATTR(cfg, 0664, sysfs_show_cfg, sysfs_store_cfg);
 #define BUFFER_SZ 10000
 
 static char s_buffer[BUFFER_SZ];
+#ifndef MISC
+// misc crée automatiquement une entree dans /dev, pas besoin de la definir
 static dev_t skeleton_dev;
 static struct cdev skeleton_cdev;
+#endif
 
 static int skeleton_open(struct inode* i, struct file* f)
 {
@@ -153,7 +156,7 @@ static struct file_operations skeleton_fops = {
 #ifdef MISC
 static struct miscdevice misc_device = {
     .minor = MISC_DYNAMIC_MINOR,
-    .fops  = &fops
+    .fops  = &skeleton_fops,
     .name  = "my_misc_module",
     .mode  = 0,
 };
