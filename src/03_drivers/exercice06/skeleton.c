@@ -74,8 +74,8 @@ static ssize_t skeleton_write(struct file* f,
 
     // store additional bytes into internal buffer
     if (count > 0) {
-        ptr[count] = 0;  // make sure string is null terminated
         if (copy_from_user(ptr, buf, count)) count = -EFAULT;
+        ptr[count] = 0;  // make really sure string is null terminated
     }
 
     pr_info("skeleton: write operation... written=%ld\n", count);
