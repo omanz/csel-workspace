@@ -1,0 +1,3 @@
+[submodule "doc/lib/hei-synd-report"]
+	path = doc/lib/hei-synd-report
+	url = https://github.com/omanz/hei-synd-report
