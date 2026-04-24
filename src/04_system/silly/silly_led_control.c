@@ -30,21 +30,24 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdio.h>
 
 /*
  * status led - gpioa.10 --> gpio10
  * power led  - gpiol.10 --> gpio362
  */
-#define GPIO_EXPORT "/sys/class/gpio/export"
+#define GPIO_EXPORT   "/sys/class/gpio/export"
 #define GPIO_UNEXPORT "/sys/class/gpio/unexport"
-#define GPIO_LED "/sys/class/gpio/gpio10"
-#define LED "10"
+#define GPIO_LED      "/sys/class/gpio/gpio10"
+#define LED           "10"
+#define K1            "0"
+#define K2            "2"
+#define K3            "3"
 
 static int open_led()
 {
     // unexport pin out of sysfs (reinitialization)
     int f = open(GPIO_UNEXPORT, O_WRONLY);
-
     write(f, LED, strlen(LED));
     close(f);
 
@@ -62,10 +65,33 @@ static int open_led()
     f = open(GPIO_LED "/value", O_RDWR);
     return f;
 }
+int open_key(const char* k)
+{
+    // unexport pin out of sysfs (reinitialization)
+    int f = open(GPIO_UNEXPORT, O_WRONLY);
+    write(f, k, strlen(k));
+    close(f);
+
+    // export pin to sysfs
+    f = open(GPIO_EXPORT, O_WRONLY);
+    write(f, k, strlen(k));
+    close(f);
+
+    // config pin
+    char path[64];
+    sprintf(path, "/sys/class/gpio/gpio%s/direction", k);
+    f = open(path, O_WRONLY);
+    write(f, "in", 2);
+    close(f);
+
+    // open gpio value attribute
+    sprintf(path, "/sys/class/gpio/gpio%s/value", k);
+    return open(path, O_RDONLY);
+}
 
 int main(int argc, char* argv[])
 {
-    long duty   = 2;     // %
+    long duty   = 2;    // %
     long period = 1000;  // ms
     if (argc >= 2) period = atoi(argv[1]);
     period *= 1000000;  // in ns
@@ -76,6 +102,10 @@ int main(int argc, char* argv[])
 
     int led = open_led();
     pwrite(led, "1", sizeof("1"), 0);
+
+    char k1_pressed;
+    int k1 = open_key(K1);
+    pread(k1, &k1_pressed, sizeof(char),0);
 
     struct timespec t1;
     clock_gettime(CLOCK_MONOTONIC, &t1);
@@ -96,6 +126,17 @@ int main(int argc, char* argv[])
                 pwrite(led, "1", sizeof("1"), 0);
             else
                 pwrite(led, "0", sizeof("0"), 0);
+        }
+        pread(k1, &k1_pressed, 1,0);
+        //printf("k1_pressed=%c\n", k1_pressed);
+        if (k1_pressed == '1') {
+            // increase duty cycle
+            duty += 10;
+            if (duty > 100) duty = 0;
+            p1 = period / 100 * duty;
+            p2 = period - p1;
+            printf("duty=%ld %%\n", duty);
+
         }
     }
 
