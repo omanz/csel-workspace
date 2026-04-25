@@ -32,6 +32,9 @@
 #include <unistd.h>
 #include <stdio.h>
 
+#include <sys/timerfd.h>
+#include <sys/epoll.h>
+
 /*
  * status led - gpioa.10 --> gpio10
  * power led  - gpiol.10 --> gpio362
@@ -78,10 +81,17 @@ int open_key(const char* k)
     close(f);
 
     // config pin
+    // set it as an input
     char path[64];
-    sprintf(path, "/sys/class/gpio/gpio%s/direction", k);
+    sprintf(path, "/sys/class/gpio/gpio%s/direction", k); // set pin as input
     f = open(path, O_WRONLY);
     write(f, "in", 2);
+    close(f);
+
+    // set interrupt on rising edge
+    sprintf(path, "/sys/class/gpio/gpio%s/edge", k); // set interrupt on rising edge
+    f = open(path, O_WRONLY);
+    write(f, "rising", 6);
     close(f);
 
     // open gpio value attribute
@@ -91,52 +101,90 @@ int open_key(const char* k)
 
 int main(int argc, char* argv[])
 {
-    long duty   = 2;    // %
-    long period = 1000;  // ms
-    if (argc >= 2) period = atoi(argv[1]);
+    // duty cycle at 50%
+    long default_period = 1000;  // ms
+    if (argc >= 2) default_period = atoi(argv[1]);
+    long period = default_period;
     period *= 1000000;  // in ns
 
-    // compute duty period...
-    long p1 = period / 100 * duty;
-    long p2 = period - p1;
+    struct itimerspec t;
+    int timer_fd = timerfd_create(CLOCK_MONOTONIC, 0);
 
+    t.it_value.tv_sec = period / 1000000000;
+    t.it_value.tv_nsec = period % 1000000000;
+    t.it_interval.tv_sec = t.it_value.tv_sec;
+    t.it_interval.tv_nsec = t.it_value.tv_nsec;
+    timerfd_settime(timer_fd, 0, &t, NULL);
+
+    int epll_fd = epoll_create1(0);
+    struct epoll_event ev;
+    ev.events = EPOLLIN | EPOLLET;
+    ev.data.fd = timer_fd;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, timer_fd, &ev);
+
+    char led_state = '1';
     int led = open_led();
-    pwrite(led, "1", sizeof("1"), 0);
 
-    char k1_pressed;
     int k1 = open_key(K1);
-    pread(k1, &k1_pressed, sizeof(char),0);
+    ev.data.fd = k1;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k1, &ev);
 
-    struct timespec t1;
-    clock_gettime(CLOCK_MONOTONIC, &t1);
+    int k2 = open_key(K2);
+    ev.data.fd = k2;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k2, &ev);
 
-    int k = 0;
+    int k3 = open_key(K3);
+    ev.data.fd = k3;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k3, &ev);
+    
+    uint64_t exp;
+    int nb_events = 0;
     while (1) {
-        struct timespec t2;
-        clock_gettime(CLOCK_MONOTONIC, &t2);
+        nb_events = epoll_wait(epll_fd, &ev, 3, -1);
+        if (nb_events > 0) {
+            if (ev.data.fd == timer_fd) {
+                // read timer fd to clear event               
+                read(timer_fd, &exp, sizeof(uint64_t));
 
-        long delta =
-            (t2.tv_sec - t1.tv_sec) * 1000000000 + (t2.tv_nsec - t1.tv_nsec);
-
-        int toggle = ((k == 0) && (delta >= p1)) | ((k == 1) && (delta >= p2));
-        if (toggle) {
-            t1 = t2;
-            k  = (k + 1) % 2;
-            if (k == 0)
-                pwrite(led, "1", sizeof("1"), 0);
-            else
-                pwrite(led, "0", sizeof("0"), 0);
-        }
-        pread(k1, &k1_pressed, 1,0);
-        //printf("k1_pressed=%c\n", k1_pressed);
-        if (k1_pressed == '1') {
-            // increase duty cycle
-            duty += 10;
-            if (duty > 100) duty = 0;
-            p1 = period / 100 * duty;
-            p2 = period - p1;
-            printf("duty=%ld %%\n", duty);
-
+                // toggle led state
+                if (led_state == '1') {
+                    pwrite(led, "0", sizeof("0"), 0);
+                    led_state = '0';
+                }
+                else {
+                    pwrite(led, "1", sizeof("1"), 0);
+                    led_state = '1';
+                }                
+            }
+            else if (ev.data.fd == k1) {                       
+                period -= 50000000;
+                t.it_value.tv_sec = period / 1000000000;
+                t.it_value.tv_nsec = period % 1000000000;
+                t.it_interval.tv_sec = t.it_value.tv_sec;
+                t.it_interval.tv_nsec = t.it_value.tv_nsec;
+                timerfd_settime(timer_fd, 0, &t, NULL);
+                printf("period = %ld ms\n", period / 1000000);
+            }
+            else if (ev.data.fd == k2) {
+                period = default_period * 1000000;
+                t.it_value.tv_sec = period / 1000000000;
+                t.it_value.tv_nsec = period % 1000000000;
+                t.it_interval.tv_sec = t.it_value.tv_sec;
+                t.it_interval.tv_nsec = t.it_value.tv_nsec;
+                timerfd_settime(timer_fd, 0, &t, NULL);
+                printf("period = %ld ms\n", period / 1000000);
+                
+            }
+            else if (ev.data.fd == k3) {
+                period += 50000000;
+                t.it_value.tv_sec = period / 1000000000;
+                t.it_value.tv_nsec = period % 1000000000;
+                t.it_interval.tv_sec = t.it_value.tv_sec;
+                t.it_interval.tv_nsec = t.it_value.tv_nsec;
+                timerfd_settime(timer_fd, 0, &t, NULL);
+                printf("period = %ld ms\n", period / 1000000);
+                
+            }
         }
     }
 
