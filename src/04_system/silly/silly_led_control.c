@@ -122,32 +122,35 @@ int main(int argc, char* argv[])
     timerfd_settime(timer_fd, 0, &t, NULL);
 
     int epll_fd = epoll_create1(0);
-    struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLET;
-    ev.data.fd = timer_fd;
-    epoll_ctl(epll_fd, EPOLL_CTL_ADD, timer_fd, &ev);
+    struct epoll_event ev[5];
+    ev[0].events = EPOLLIN;
+    ev[0].data.fd = timer_fd;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, timer_fd, &ev[0]);
 
     char led_state = '1';
     int led = open_led();
 
     int k1 = open_key(K1);
-    ev.data.fd = k1;
-    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k1, &ev);
+    ev[1].events = EPOLLET; // edge triggered
+    ev[1].data.fd = k1;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k1, &ev[1]);
 
     int k2 = open_key(K2);
-    ev.data.fd = k2;
-    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k2, &ev);
+    ev[2].events = EPOLLET; // edge triggered
+    ev[2].data.fd = k2;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k2, &ev[2]);
 
     int k3 = open_key(K3);
-    ev.data.fd = k3;
-    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k3, &ev);
+    ev[3].events = EPOLLET; // edge triggered
+    ev[3].data.fd = k3;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k3, &ev[3]);
     
     uint64_t exp;
     int nb_events = 0;
     while (1) {
-        nb_events = epoll_wait(epll_fd, &ev, 3, -1);
-        if (nb_events > 0) {
-            if (ev.data.fd == timer_fd) {
+        nb_events = epoll_wait(epll_fd, ev, 5, -1);
+        for (int i = 0; i < nb_events; i++) {
+            if (ev[i].data.fd == timer_fd) {
                 // read timer fd to clear event               
                 read(timer_fd, &exp, sizeof(uint64_t));
 
@@ -161,8 +164,9 @@ int main(int argc, char* argv[])
                     led_state = '1';
                 }                
             }
-            else if (ev.data.fd == k1) {           
-                period -= 50000000;
+            else if (ev[i].data.fd == k1) {           
+                period -= 10000000;
+                if (period <= 0) period = 1000000;
                 t.it_value.tv_sec = period / 1000000000;
                 t.it_value.tv_nsec = period % 1000000000;
                 t.it_interval.tv_sec = t.it_value.tv_sec;
@@ -170,25 +174,23 @@ int main(int argc, char* argv[])
                 timerfd_settime(timer_fd, 0, &t, NULL);
                 syslog(LOG_INFO, "period = %ld ms\n", period / 1000000);
             }
-            else if (ev.data.fd == k2) {
+            else if (ev[i].data.fd == k2) {
                 period = default_period * 1000000;
                 t.it_value.tv_sec = period / 1000000000;
                 t.it_value.tv_nsec = period % 1000000000;
                 t.it_interval.tv_sec = t.it_value.tv_sec;
                 t.it_interval.tv_nsec = t.it_value.tv_nsec;
                 timerfd_settime(timer_fd, 0, &t, NULL);
-                syslog(LOG_INFO, "period = %ld ms\n", period / 1000000);
-                
+                syslog(LOG_INFO,  "period = %ld ms\n", period / 1000000);
             }
-            else if (ev.data.fd == k3) {
-                period += 50000000;
+            else if (ev[i].data.fd == k3) {
+                period += 10000000;
                 t.it_value.tv_sec = period / 1000000000;
                 t.it_value.tv_nsec = period % 1000000000;
                 t.it_interval.tv_sec = t.it_value.tv_sec;
                 t.it_interval.tv_nsec = t.it_value.tv_nsec;
                 timerfd_settime(timer_fd, 0, &t, NULL);
                 syslog(LOG_INFO, "period = %ld ms\n", period / 1000000);
-                
             }
         }
     }
