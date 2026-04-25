@@ -145,6 +145,18 @@ int main(int argc, char* argv[])
     ev[3].data.fd = k3;
     epoll_ctl(epll_fd, EPOLL_CTL_ADD, k3, &ev[3]);
     
+    // add another timer for long press
+    struct itimerspec long_press_timer;
+    int long_press_fd = timerfd_create(CLOCK_MONOTONIC, 0);
+
+    long_press_timer.it_value.tv_sec = 0; 
+    long_press_timer.it_value.tv_nsec = 150000000; //150 ms
+    long_press_timer.it_interval.tv_sec = 0; // one-shot timer
+    long_press_timer.it_interval.tv_nsec = 0;
+    ev[4].events = EPOLLIN; 
+    ev[4].data.fd = long_press_fd;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, long_press_fd, &ev[4]);
+
     uint64_t exp;
     int nb_events = 0;
     while (1) {
@@ -173,6 +185,7 @@ int main(int argc, char* argv[])
                 t.it_interval.tv_nsec = t.it_value.tv_nsec;
                 timerfd_settime(timer_fd, 0, &t, NULL);
                 syslog(LOG_INFO, "period = %ld ms\n", period / 1000000);
+                timerfd_settime(long_press_fd, 0, &long_press_timer, NULL); // start long press timer
             }
             else if (ev[i].data.fd == k2) {
                 period = default_period * 1000000;
@@ -191,6 +204,44 @@ int main(int argc, char* argv[])
                 t.it_interval.tv_nsec = t.it_value.tv_nsec;
                 timerfd_settime(timer_fd, 0, &t, NULL);
                 syslog(LOG_INFO, "period = %ld ms\n", period / 1000000);
+                timerfd_settime(long_press_fd, 0, &long_press_timer, NULL); // start long press timer
+            }
+            else if (ev[i].data.fd == long_press_fd) {
+                // read timer fd to clear event
+                read(long_press_fd, &exp, sizeof(uint64_t));
+                
+                // read keys state to check if any key is still pressed
+                char buf;
+                pread(k1, &buf, 1, 0);
+                if (buf == '1') {
+                    //syslog(LOG_INFO, "long press detected on K1\n");
+                    // restart timer for longer press detection
+                    timerfd_settime(long_press_fd, 0, &long_press_timer, NULL);
+                    // decrease period more rapidly
+                    period -= 20000000; // decrease by 20 ms
+                    if (period <= 0) period = 1000000;
+                    t.it_value.tv_sec = period / 1000000000;
+                    t.it_value.tv_nsec = period % 1000000000;
+                    t.it_interval.tv_sec = t.it_value.tv_sec;
+                    t.it_interval.tv_nsec = t.it_value.tv_nsec;
+                    timerfd_settime(timer_fd, 0, &t, NULL);
+                    syslog(LOG_INFO, "period = %ld ms\n", period / 1000000);
+                }
+
+                pread(k3, &buf, 1, 0);
+                if (buf == '1') {
+                    //syslog(LOG_INFO, "long press detected on K3\n");
+                    // restart timer for longer press detection
+                    timerfd_settime(long_press_fd, 0, &long_press_timer, NULL);
+                    // increase period more rapidly
+                    period += 20000000; // increase by 20 ms
+                    t.it_value.tv_sec = period / 1000000000;
+                    t.it_value.tv_nsec = period % 1000000000;
+                    t.it_interval.tv_sec = t.it_value.tv_sec;
+                    t.it_interval.tv_nsec = t.it_value.tv_nsec;
+                    timerfd_settime(timer_fd, 0, &t, NULL);
+                    syslog(LOG_INFO, "period = %ld ms\n", period / 1000000);
+                }
             }
         }
     }
