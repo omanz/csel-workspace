@@ -34,6 +34,7 @@
 
 #include <sys/timerfd.h>
 #include <sys/epoll.h>
+#include <syslog.h>
 
 /*
  * status led - gpioa.10 --> gpio10
@@ -101,6 +102,10 @@ int open_key(const char* k)
 
 int main(int argc, char* argv[])
 {
+    openlog("silly_led_control", LOG_PID, LOG_USER);
+    // to see the logs use :
+    // tail -f /var/log/messages
+
     // duty cycle at 50%
     long default_period = 1000;  // ms
     if (argc >= 2) default_period = atoi(argv[1]);
@@ -156,14 +161,14 @@ int main(int argc, char* argv[])
                     led_state = '1';
                 }                
             }
-            else if (ev.data.fd == k1) {                       
+            else if (ev.data.fd == k1) {           
                 period -= 50000000;
                 t.it_value.tv_sec = period / 1000000000;
                 t.it_value.tv_nsec = period % 1000000000;
                 t.it_interval.tv_sec = t.it_value.tv_sec;
                 t.it_interval.tv_nsec = t.it_value.tv_nsec;
                 timerfd_settime(timer_fd, 0, &t, NULL);
-                printf("period = %ld ms\n", period / 1000000);
+                syslog(LOG_INFO, "period = %ld ms\n", period / 1000000);
             }
             else if (ev.data.fd == k2) {
                 period = default_period * 1000000;
@@ -172,7 +177,7 @@ int main(int argc, char* argv[])
                 t.it_interval.tv_sec = t.it_value.tv_sec;
                 t.it_interval.tv_nsec = t.it_value.tv_nsec;
                 timerfd_settime(timer_fd, 0, &t, NULL);
-                printf("period = %ld ms\n", period / 1000000);
+                syslog(LOG_INFO, "period = %ld ms\n", period / 1000000);
                 
             }
             else if (ev.data.fd == k3) {
@@ -182,11 +187,11 @@ int main(int argc, char* argv[])
                 t.it_interval.tv_sec = t.it_value.tv_sec;
                 t.it_interval.tv_nsec = t.it_value.tv_nsec;
                 timerfd_settime(timer_fd, 0, &t, NULL);
-                printf("period = %ld ms\n", period / 1000000);
+                syslog(LOG_INFO, "period = %ld ms\n", period / 1000000);
                 
             }
         }
     }
-
+    closelog();
     return 0;
 }
