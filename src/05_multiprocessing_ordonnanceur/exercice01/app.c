@@ -33,8 +33,6 @@ static void install_signals(void)
     struct sigaction act = {
         .sa_handler = catch_signal,
     };
-    //memset(&sa, 0, sizeof(sa));
-    //sa.sa_handler = signal_handler;
 
     sigaction(SIGHUP, &act, NULL);  // 1 - hangup
     sigaction(SIGINT, &act, NULL);  // 2 - terminal interrupt
