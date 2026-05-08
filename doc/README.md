@@ -53,6 +53,10 @@ Pour générer le rapport final:
 typst compile report.typ --input type="final" --input lang="fr"
 ```
 
+## Problèmes de droits
+Attention lors de l'import d'image à avoir le bon owner de l'image. si l'image est possedée par root, le rapport ne pourra pas être généré. Dans ce cas, changer le ownser de l'image
+sudo chown -R toi:toi ~/Documents/tonpathprefere/labo/csel-workspace/
+
 ## Modifier le template
 
 Le template se trouve dans `lib/hei-synd-report/` et est un submodule pointant vers le fork [omanz/hei-synd-report](https://github.com/omanz/hei-synd-report).

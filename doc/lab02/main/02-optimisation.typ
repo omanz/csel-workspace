@@ -99,7 +99,67 @@ Pour connaitre l'utilisation de la mémoire de notre sous groupe nous utilisons 
 La lecture du fichier `memory.stat` fournit des informations plus détaillées sur la répartition de la mémoire (RSS, cache, pages mappées, etc.).
 
 Source: https://docs.kernel.org/admin-guide/cgroup-v1/memory.html
- 
+
+
+=== Exercice 3
+Nous créons un programme pour consommer du CPU et nous ajoutons des limitations concernant le CPU dans les cgroups.
+```
+$ mkdir /sys/fs/cgroup/cpuset
+$ mount -t cgroup -o cpu,cpuset cpuset /sys/fs/cgroup/cpuset
+# création de 2 groupes high et low
+$ mkdir /sys/fs/cgroup/cpuset/high
+$ mkdir /sys/fs/cgroup/cpuset/low
+$ echo 3 > /sys/fs/cgroup/cpuset/high/cpuset.cpus
+$ echo 0 > /sys/fs/cgroup/cpuset/high/cpuset.mems
+$ echo 2 > /sys/fs/cgroup/cpuset/low/cpuset.cpus
+$ echo 0 > /sys/fs/cgroup/cpuset/low/cpuset.mems
+```
+#thinkbox()[1. Les 4 dernières lignes sont obligatoires pour que les prochaines commandes fonctionnent correctement. Pouvez-vous en donner la raison ?]
+`echo 3 > /sys/fs/cgroup/cpuset/high/cpuset.cpus` et `echo 2 > /sys/fs/cgroup/cpuset/low/cpuset.cpus`
+Ces commandes définissent les CPU autorisés pour chaque cgroup. Le groupe high est limité au CPU 3 et le groupe low au CPU 2.
+
+`$ echo 0 > /sys/fs/cgroup/cpuset/high/cpuset.mems`
+Le paramètre `cpuset.mems` correspond à liste des noeuds mémoire autorisés pour un cgroup. Un noeud mémoire représente une zone physique de RAM.
+Certains systèmes linux peuvent avoir leur mémoire divisée en “noeuds” mais dans notre cas, nous avons une seule mémoire non divisée.
+Si nous ne renseignons pas ce paramètre, le noyau refuse d’associer un processus au cgroup, ce qui entraîne l’erreur suivante :
+```bash
+# echo $$ > /sys/fs/cgroup/cpuset/low/tasks
+sh: write error: No space left on device
+```
+
+#thinkbox()[2. Ouvrez deux shells distincts et placez une dans le cgroup high et l’autre dans le cgroup low. Lancez ensuite votre application dans chacun des shells. Quel devrait être le bon comportement ? Pouvez-vous le vérifier ?]
+Chaque shell est assigné à un cgroup différent et donc restreint à un CPU distinct.
+Chaque processus peut ainsi utiliser pleinement le CPU qui lui est assigné, ce qui permet d’observer une utilisation proche de 100% sur chaque coeur.
+Nous vérifions cela avec la commande `htop`:
+#figure(image("/lab02/resources/img/ex3_htop.png", width: 100%), caption: "Commande Htop avec répartition sur 2 CPUs")
+
+À l’inverse, si les deux processus sont placés dans le même cgroup ou sur le même CPU, ils se partagent le temps processeur, ce qui entraîne une répartition approximative de 50% / 50%.
+#figure(image("/lab02/resources/img/ex3_htp_samecpu.png", width: 100%), caption: "Commande Htop sans répartition")
+
+Source: https://docs.kernel.org/admin-guide/cgroup-v1/cpusets.html
+
+
+#thinkbox()[3. Sachant que l’attribut cpu.shares permet de répartir le temps CPU entre différents cgroups, comment devrait-on procéder pour lancer deux tâches distinctes sur le cœur 4 de notre processeur et attribuer 75% du temps CPU à la première tâche et 25% à la deuxième ?]
+`cpu.shares` contient un ratio. Voici les commandes que nous lançons:
+```bash
+# forcer les cgroups sur le même coeur (4)
+echo 4 > /sys/fs/cgroup/cpuset/high/cpuset.cpus
+echo 4 > /sys/fs/cgroup/cpuset/low/cpuset.cpus
+# fixer la mémoire node (déjà fait normalement)
+echo 0 > /sys/fs/cgroup/cpuset/high/cpuset.mems
+echo 0 > /sys/fs/cgroup/cpuset/low/cpuset.mems
+# fixer le ratio (le minimum est 2)
+echo 6 > /sys/fs/cgroup/cpuset/high/cpu.shares
+echo 2 > /sys/fs/cgroup/cpuset/low/cpu.shares
+```
+
+Nous avons constaté que en écrivant la valeur "1" dans "cpu.shares", celle-ci est forcée à "2". Nous adaptons les valeurs en conséquence tout en consérvant le même ratio.
+Le CPU 4 n’étant pas disponible sur notre système, nous utilisons le CPU 3.
+
+#figure(image("/lab02/resources/img/ex3_htop_75_25.png", width: 100%), caption: "Commande Htop avec répartition 75-25")
+
+
+
 == Résumé du laboratoire
 
 == Réponse aux questions
