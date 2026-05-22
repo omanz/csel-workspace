@@ -21,6 +21,7 @@
 //
 #include "main/01-programmation.typ"
 #include "main/02-optimisation.typ"
+#include "main/02-outilsperf.typ"
 #include "main/03-feedback.typ"
 #include "main/04-annexes.typ"
 
