@@ -6,6 +6,7 @@
 Contrairement à ce qui est indiqué dans le codelab, la commande `perf list` nous permets de voir que `perf` inclus déja les binutils nécessaires.
 
 == Exercice 01
+Sans options spécifiques, la commande mesure par défaut un certain nombre de compteurs.
 ```
 # perf stat ./ex1 
 
@@ -25,3 +26,121 @@ Contrairement à ce qui est indiqué dans le codelab, la commande `perf list` no
       41.311481000 seconds user
        0.280660000 seconds sys
 ```
+Relevez par exemple les compteurs du nombre de context-switches et d’instructions ainsi que le temps d’exécution.
+L'execution du programme prend environ 42 secondes dont la majeur partie en espace utilisateur. Il travaille donc peu avec les I/O et fait majoritairement du calcul pur et des accès mémoire.
+Le compteur d'instruction indique que le CPU passe le principal de son temps à attendre (0.05 insn per cycle). Le branch-misses est raisonnable (0.37%). Le programme a subi 20 changements de contexte durant son exécutionle ce qui est également raisonnable, le problème vient donc d'ailleurs.
+```
+# perf stat -e cache-misses ./ex1
+
+ Performance counter stats for './ex1':
+
+         406897743      cache-misses                                                
+
+      38.942507102 seconds time elapsed
+
+      38.265720000 seconds user
+       0.276567000 seconds sys
+```
+On voit à ce moment que le cache misses est très élevé, le cache mémoire est donc mal utilisé.
+
+#thinkbox()[Ce programme contient une erreur triviale qui empêche une utilisation optimale du cache. De quelle erreur s’agit-il ?]
+Le programme parcours le tableau par colonnes au lieu de lignes. Il fait donc des sauts entre les adresses memoire au lieu de modifier des emplacement mémoire contigu. En effet, le cache depend de la localité spatiale et temporelle: Il faut que 2 opérations qui utilisent une même zone mémoire soient faites proche dans le temps.
+
+#thinkbox()[Corrigez l’erreur, recompilez et mesurez à nouveau le temps d’exécution (soit avec perf stat, soit avec la commande time). Quelle amélioration constatez-vous ?]
+```
+# perf stat ./ex1 
+
+ Performance counter stats for './ex1':
+
+           2409.50 msec task-clock                #    0.992 CPUs utilized          
+                17      context-switches          #    7.055 /sec                   
+                 0      cpu-migrations            #    0.000 /sec                   
+             48867      page-faults               #   20.281 K/sec                  
+        1966007847      cycles                    #    0.816 GHz                    
+        1380444909      instructions              #    0.70  insn per cycle         
+         264953592      branches                  #  109.962 M/sec                  
+            653992      branch-misses             #    0.25% of all branches        
+
+       2.429980293 seconds time elapsed
+
+       2.165846000 seconds user
+       0.222076000 seconds sys
+
+
+# perf stat -e cache-misses ./ex1
+
+ Performance counter stats for './ex1':
+
+           1244933      cache-misses                                                
+
+       2.440078626 seconds time elapsed
+
+       2.123245000 seconds user
+       0.275689000 seconds sys
+```
+#table(
+  columns: (2fr, 1fr, 1fr, 2fr),
+  stroke: 0.5pt,
+  inset: 8pt,
+
+  table.header(
+    [*Compteur*],
+    [*Avant*],
+    [*Après*],
+    [*Amélioration*],
+  ),
+
+  [Temps d'exécution], [42.0 s], [2.4 s], [~17× plus rapide],
+  [IPC], [0.05], [0.70], [14× meilleur],
+  [task-clock], [41 986 ms], [2 409 ms], [~17× moins de CPU],
+  [Instructions], [1.67 Mrd], [1.38 Mrd], [similaire],
+  [Fréquence effective], [0.816 GHz], [0.816 GHz], [inchangée],
+)
+Le nombre d'instructions est quasi identique, donc le programme fait le même travail, mais 17x plus vite.
+Le nombre de cache-misses est maintenant bien plus faible.
+
+#thinkbox()[Relevez les valeurs du compteur L1-dcache-load-misses pour les deux versions de l’application. Quel facteur constatez-vous entre les deux valeurs ?
+`# perf stat -e L1-dcache-load-misses ./ex1`]
+#table(
+  columns: (1fr, 1fr),
+  stroke: 0.5pt,
+  inset: 8pt,
+
+  [*Version buggée*], [*Version corrigée*],
+
+  [
+```
+# perf stat -e L1-dcache-load-misses ./ex1
+
+ Performance counter stats for './ex1':
+
+         406972967      L1-dcache-load-misses                                       
+
+      40.687446478 seconds time elapsed
+
+      39.986415000 seconds user
+       0.288499000 seconds sys
+```
+],
+
+[
+```
+# perf stat -e L1-dcache-load-misses ./ex1
+
+ Performance counter stats for './ex1':
+
+           1297820      L1-dcache-load-misses                                       
+
+       2.431259751 seconds time elapsed
+
+       2.186329000 seconds user
+       0.209635000 seconds sys
+```
+],
+)
+La version corrigée génère environ 300 fois moins de miss L1 que la version buggée. C'est la preuve que l'erreur était un problème de localité mémoire: le CPU devait aller chercher les données hors du cache L1 à presque chaque accès dans la version originale.
+
+#thinkbox()[]
+
+
+#thinkbox()[]
