@@ -12,10 +12,12 @@
 static struct timer_list blink_timer;
 static int led_state = 0;
 static int frequency  = 2;    // Hz
+static int auto_mode  = 1;    // 1=auto, 0=manual
 
 static struct class* sysfs_class;
 static struct device* sysfs_device;
 
+/* frequency */
 static ssize_t frequency_show(struct device *dev,
                                struct device_attribute *attr, char *buf)
 {
@@ -34,6 +36,27 @@ static ssize_t frequency_store(struct device *dev,
     return count;
 }
 static DEVICE_ATTR_RW(frequency);  // create dev_attr_frequency
+
+/* mode */
+static ssize_t mode_show(struct device *dev,
+                               struct device_attribute *attr, char *buf)
+{
+    return sysfs_emit(buf, "%d\n", auto_mode);
+}
+
+static ssize_t mode_store(struct device *dev,
+                                struct device_attribute *attr,
+                                const char *buf, size_t count)
+{
+    if (sysfs_streq(buf, "auto"))
+        auto_mode = 1;
+    else if (sysfs_streq(buf, "manual"))
+        auto_mode = 0;
+    else
+        return -EINVAL;
+    return count;
+}
+static DEVICE_ATTR_RW(mode);  // create dev_attr_mode
 
 static void blink_callback(struct timer_list *t)
 {
@@ -64,7 +87,7 @@ static int __init fanctl_init(void)
     sysfs_class = class_create(THIS_MODULE, "fanctl");
     sysfs_device = device_create(sysfs_class, NULL, 0, NULL, "fanctl");
     status = device_create_file(sysfs_device, &dev_attr_frequency);
-
+    status = device_create_file(sysfs_device, &dev_attr_mode);
      /* timer */
     timer_setup(&blink_timer, blink_callback, 0);
     mod_timer(&blink_timer, jiffies + HZ / frequency);
@@ -76,6 +99,7 @@ static int __init fanctl_init(void)
 static void __exit fanctl_exit(void)
 {
     del_timer_sync(&blink_timer);
+    device_remove_file(sysfs_device, &dev_attr_mode);
     device_remove_file(sysfs_device, &dev_attr_frequency);
     device_destroy(sysfs_class, 0);
     class_destroy(sysfs_class);
