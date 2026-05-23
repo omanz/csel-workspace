@@ -27,4 +27,5 @@ Puis nous tetons avec succès le programme de test `/workspace/src/07_miniproj/o
 === Module noyau
 Nous allons commencer par créer un module noyau qui fait clignoter la LED Status (gpio10) à une fréquence fixe.
 Nous installons manuellement le module pour vérifier son bon fonctionnement avec la commande `insmod`.
-Le fait d'utiliser un module noyau
+
+La seconde étape est d'exposer la fréquence et le mode via sysfs sous `/sys/class/fanctl/fanctl/frequency` et `/sys/class/fanctl/fanctl/mode`
