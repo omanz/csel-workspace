@@ -31,3 +31,5 @@ Nous installons manuellement le module pour vérifier son bon fonctionnement ave
 La seconde étape est d'exposer la fréquence et le mode via sysfs.
 La frequence est atteignable via `/sys/class/fanctl/fanctl/frequency` et peut aller de 1 à 20.
 Le mode est atteignable via `/sys/class/fanctl/fanctl/mode` et prend les valeurs `auto` et `manual`.
+
+La lecture de la température peut être testée via `cat /sys/class/thermal/thermal_zone0/temp`.

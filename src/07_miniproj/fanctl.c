@@ -4,6 +4,7 @@
 #include <linux/timer.h>
 #include <linux/gpio.h>
 #include <linux/device.h>
+#include <linux/thermal.h>
 
 #define LED_GPIO 10
 #define FREQ_MIN    1
@@ -16,6 +17,15 @@ static int auto_mode  = 1;    // 1=auto, 0=manual
 
 static struct class* sysfs_class;
 static struct device* sysfs_device;
+
+/* temperature */
+static int get_cpu_temp(void)
+{
+    int temp = 0;
+    struct thermal_zone_device *tz = thermal_zone_get_zone_by_name("cpu-thermal");
+    thermal_zone_get_temp(tz, &temp);
+    return temp / 1000; // millidegree to degree
+}
 
 /* frequency */
 static ssize_t frequency_show(struct device *dev,
@@ -60,6 +70,13 @@ static DEVICE_ATTR_RW(mode);  // create dev_attr_mode
 
 static void blink_callback(struct timer_list *t)
 {
+    if (auto_mode != 0) {
+        int temp = get_cpu_temp();
+        if (temp < 35) frequency = 2;
+        else if (temp < 40) frequency = 5;
+        else if (temp < 45) frequency = 10;
+        else frequency = 20;
+    }
     led_state = !led_state;
     gpio_set_value(LED_GPIO, led_state);
     mod_timer(&blink_timer, jiffies + HZ / frequency);
