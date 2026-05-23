@@ -316,3 +316,6 @@ real	0m 2.27s
 user	0m 1.39s
 sys	0m 0.10s
 ```
+Plutôt que d'utiliser un `set`, nous améliorons encore les performances avec un `unordered_set`: il permet des recherches et insertions en O(1) moyen grâce à une table de hachage, contrairement à O(log n) pour un arbre équilibré.
+Puisque le gain est moins remarquable, nous utilisons un script (`tempsmoyen.sh`) pour mesurer la moyenne de temps d'execution (hyperfine n'étant pas disponible sur notre cible). Cette dernière modification nous permet de passer de 2.273 secondes en moyenne à 2.225 secondes sur le fichier `access_log_NASA_Jul95_samples` et sur le fichier `access_log_NASA_Jul95` de 18.194 secondes à 18 secondes.
+
