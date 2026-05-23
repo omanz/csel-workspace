@@ -266,3 +266,53 @@ L'outil `perf` montre que le nombre de branch-misses a fortement diminué. Avant
 Après le tri du tableau, le branchement devient plus prévisible : il reste faux pendant une longue période puis devient vrai. Le prédicteur apprend rapidement ce comportement et les erreurs deviennent rares.
 
 Malgré le coût du qsort(), le tri n'est effectué qu'une seule fois alors que la boucle est répétée 10'000 fois, ce qui explique la diminution du temps d'exécution.
+
+== Parsing de logs apache
+Difficulté: `perf record` a besoin de `addr2line` pour fonctionner. Cet outil est dispoinible en activant `BR2_PACKAGE_BINUTILS_TARGET`, comme la procédure initiale du codelab le stipulait. Mais puisque la commande `perf list` retournait ce qui était décrit dans le codelab, nous avons vu le problème que ici.
+
+Après l'installation, nous vérifions la présence de `addr2line`:
+```
+# which addr2line
+/usr/bin/addr2line
+```
+La commande `perf report --no-children --demangle` peut alors fonctionner.
+
+#thinkbox()[
+Avec les instructions précédentes, déterminez quelle fonction de notre application fait (indirectement) appel à `std::operator==<char>`.]
+
+L'option `--no-children` de la commande `perf report --no-children --demangle` masque une partie des informations hiérarchiques. En utilisant la commande `perf report -g graph --demangle` , nous pouvons développer la hierarchie avec `+`
+```
+-   42.04%    25.72%  read-apache-log  read-apache-logs     [.] std::operator==<char>                           ◆
+   - 25.72% _start                                                                                              ▒
+        __libc_start_main                                                                                       ▒
+        0xffffb5eb835f                                                                                          ▒
+        main                                                                                                    ▒
+        ApacheAccessLogAnalyzer::processFile                                                                    ▒
+        HostCounter::notifyHost                                                                                 ▒
+        HostCounter::isNewHost                                                                                  ▒
+        std::find<__gnu_cxx::__normal_iterator<std::__cxx11::basic_string<char, std::char_traits<char>, std::all▒
+        std::__find_if<__gnu_cxx::__normal_iterator<std::__cxx11::basic_string<char, std::char_traits<char>, std▒
+        std::__find_if<__gnu_cxx::__normal_iterator<std::__cxx11::basic_string<char, std::char_traits<char>, std▒
+        __gnu_cxx::__ops::_Iter_equals_val<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocat▒
+        std::operator==<char>        
+```
+En remontant la callchain dans `perf report`, on observe que `std::operator==<char>` est appelée indirectement depuis `HostCounter::isNewHost()`. Cette fonction utilise `std::find()` pour vérifier si un hôte est déjà présent, ce qui entraîne de nombreuses comparaisons de chaînes. 
+
+=== Optimisation algorithmique
+La solution proposée dans le codelab remplace le `std::vector` par un `std::set`. La recherche passe de O(n) à O(log(n)) mais l'insertion est un peu plus lente en passant de O(1) à O(log n) car `set` permet une recherche dans un arbre structuré.
+
+L'amélioration est drastique, on passe de plus de 2 minutes d'execution à un peu plus de 2 secondes.
+```
+# time ./read-apache-logs access_log_NASA_Jul95_samples
+Processing log file access_log_NASA_Jul95_samples
+Found 14867 unique Hosts/IPs
+real	2m 15.70s
+user	2m 14.59s
+sys	0m 0.10s
+# time ./read-apache-logs-opt  access_log_NASA_Jul95_samples
+Processing log file access_log_NASA_Jul95_samples
+Found 14867 unique Hosts/IPs
+real	0m 2.27s
+user	0m 1.39s
+sys	0m 0.10s
+```
