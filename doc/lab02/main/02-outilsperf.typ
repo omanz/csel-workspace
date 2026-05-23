@@ -320,3 +320,6 @@ Plutôt que d'utiliser un `set`, nous améliorons encore les performances avec u
 Puisque le gain est moins remarquable, nous utilisons un script (`tempsmoyen.sh`) pour mesurer la moyenne de temps d'execution (hyperfine n'étant pas disponible sur notre cible). Cette dernière modification nous permet de passer de 2.273 secondes en moyenne à 2.225 secondes sur le fichier `access_log_NASA_Jul95_samples` et sur le fichier `access_log_NASA_Jul95` de 18.194 secondes à 18 secondes.
 
 Finalement, en ajoutant encore 2 optimisations (éviter la copie de `std::string hostname` et profiter de la propriété de `insert` qui n'insère un élement que si il n'est pas présent), nous descendons à une moyenne de 17.996 secondes pour le fichier `access_log_NASA_Jul95`.
+
+== Mesure de la latence et de la gigue (jitter)
+#thinkbox()[Décrivez comment devrait-on procéder pour mesurer la latence et la gigue d’interruption, ceci aussi bien au niveau du noyau (kernel space) que de l’application (user space).]
