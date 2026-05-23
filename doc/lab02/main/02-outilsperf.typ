@@ -319,3 +319,4 @@ sys	0m 0.10s
 Plutôt que d'utiliser un `set`, nous améliorons encore les performances avec un `unordered_set`: il permet des recherches et insertions en O(1) moyen grâce à une table de hachage, contrairement à O(log n) pour un arbre équilibré.
 Puisque le gain est moins remarquable, nous utilisons un script (`tempsmoyen.sh`) pour mesurer la moyenne de temps d'execution (hyperfine n'étant pas disponible sur notre cible). Cette dernière modification nous permet de passer de 2.273 secondes en moyenne à 2.225 secondes sur le fichier `access_log_NASA_Jul95_samples` et sur le fichier `access_log_NASA_Jul95` de 18.194 secondes à 18 secondes.
 
+Finalement, en ajoutant encore 2 optimisations (éviter la copie de `std::string hostname` et profiter de la propriété de `insert` qui n'insère un élement que si il n'est pas présent), nous descendons à une moyenne de 17.996 secondes pour le fichier `access_log_NASA_Jul95`.

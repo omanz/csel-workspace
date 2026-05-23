@@ -7,7 +7,7 @@
 class ApacheAccessLogAnalyzer
 {
     public:
-        ApacheAccessLogAnalyzer(std::string filename);
+        ApacheAccessLogAnalyzer(const std::string filename);
 
         void openFile();
         void closeFile();

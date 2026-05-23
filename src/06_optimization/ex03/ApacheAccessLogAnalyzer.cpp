@@ -5,7 +5,7 @@
 #include <algorithm>
 
 
-ApacheAccessLogAnalyzer::ApacheAccessLogAnalyzer(std::string filename)
+ApacheAccessLogAnalyzer::ApacheAccessLogAnalyzer(const std::string filename)
     : myFilename(filename)
 {
 
