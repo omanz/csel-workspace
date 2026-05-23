@@ -41,7 +41,7 @@ static DEVICE_ATTR_RW(frequency);  // create dev_attr_frequency
 static ssize_t mode_show(struct device *dev,
                                struct device_attribute *attr, char *buf)
 {
-    return sysfs_emit(buf, "%d\n", auto_mode);
+    return sysfs_emit(buf, "%s\n", auto_mode ? "auto" : "manual");
 }
 
 static ssize_t mode_store(struct device *dev,
