@@ -1,8 +1,6 @@
 #import "../metadata.typ": *
 #pagebreak()
-= #box[
-  #text(size: 19pt)[Outils d'analyse de performance pour Linux]
-]
+= Outils d'analyse de performance pour Linux <grand-titre>
 == Exercice 01
 #thinkbox()[Sans options spécifiques, la commande mesure par défaut un certain nombre de compteurs. Relevez par exemple les compteurs du nombre de context-switches et d’instructions ainsi que le temps d’exécution.]
 ```
