@@ -1,6 +1,18 @@
 #import "../metadata.typ": *
 #pagebreak()
-= Outils d'analyse de performance pour Linux <grand-titre>
+#show heading.where(level: 1): (it) => {
+  set text(size: 22pt)
+  set block(above: 1.2em, below: 1.2em)
+  if it.numbering != none {
+    let num = numbering(it.numbering, ..counter(heading).at(it.location()))
+    let prefix = num + h(0.5em) + text(fill: hei-pink)[|] + h(0.5em)
+    unshift-prefix(prefix, it.body)
+  } else {
+    it
+  }
+}
+
+= Outils d'analyse de performance pour Linux
 == Exercice 01
 #thinkbox()[Sans options spécifiques, la commande mesure par défaut un certain nombre de compteurs. Relevez par exemple les compteurs du nombre de context-switches et d’instructions ainsi que le temps d’exécution.]
 ```
