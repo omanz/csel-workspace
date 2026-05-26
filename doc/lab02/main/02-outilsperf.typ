@@ -1,7 +1,8 @@
 #import "../metadata.typ": *
 #pagebreak()
-
-= Outils d'analyse de performance pour Linux
+= #box[
+  #text(size: 19pt)[Outils d'analyse de performance pour Linux]
+]
 == Exercice 01
 #thinkbox()[Sans options spécifiques, la commande mesure par défaut un certain nombre de compteurs. Relevez par exemple les compteurs du nombre de context-switches et d’instructions ainsi que le temps d’exécution.]
 ```
@@ -274,10 +275,25 @@ Pour mesurer la latence et la gigue d'une interruption au niveau du noyau, on pe
 
 Pour les mesurer au niveau de l'application, nous ne pouvons pas utiliser la technique d'écrire dans `/sys/class/gpio/...` pour faire du toggling de GPIO, car cela introduit une latence supplémentaire due à l'accès au système de fichiers. En revanche il est possible d'utiliser la méthode `mmap()` pour accéder directement aux registres du GPIO, ce qui permet de réduire la latence et d'obtenir des mesures plus précises. En utilisant `mmap()`, l'application peut directement contrôler les GPIOs sans passer par le système de fichiers, ce qui minimise les délais et permet de mesurer la latence et la gigue de manière plus précise.
 
-== Synthèse sur ce qui a été appris/exercé
-== Remarques et choses à retenir
-== Feedback personnel sur le laboratoire
-Au début du laboratoire, il est indiqué qu’il est nécessaire d’ajouter plusieurs paquets dans Buildroot. Toutefois, une partie des options requises est déjà activée par défaut et la commande `perf list` ne nous a pas permis d’identifier l’absence de l’option `BR2_PACKAGE_BINUTILS_TARGET`. Ce point n’a été constaté qu’au moment de l’utilisation de `perf report`, qui nécessite la présence de l’outil `addr2line`.
 
+== Synthèse sur ce qui a été appris/exercé
+Lors de ce laboratoire, nous utilisons différents outils d’analyse de performances sous Linux, principalement `perf`, afin de mesurer et d’identifier les causes de ralentissement dans plusieurs applications.
+
+Dans le premier exercice, nous mettons en évidence l’impact de la localité mémoire et de l’utilisation du cache processeur. L’analyse des compteurs de performance permet d’identifier un parcours mémoire inefficace provoquant un nombre élevé de *cache-misses*. 
+
+Le second exercice permet d’étudier l’impact de la prédiction de branchement du processeur. Nous observons qu’une simple réorganisation des données réduit fortement le nombre de *branch-misses* et améliore le temps d’exécution.
+
+La partie consacrée au parsing des logs Apache met en évidence l’importance des choix algorithmiques et des structures de données. Le remplacement d’une recherche linéaire par des structures adaptées (`set`, puis `unordered_set`) permet une réduction importante du temps d’exécution.
+
+== Remarques et choses à retenir
+Les compteurs matériels accessibles via `perf` permettent d’identifier plus précisément les causes d’un ralentissement, notamment les défauts de cache, les erreurs de prédiction de branchement ou les changements de contexte.
+
+La manière de programmer, que ce soit pour le choix des structures de donnée, ou l'ordre d'accès aux données, a une enorme importance sur les performances.
+L’utilisation de `perf` introduit une légère surcharge d’exécution, mais peut sans autre être utilisée pour identifier les causes de lenteur dans l'execution d'une application.
+
+== Feedback personnel sur le laboratoire
+Comme précédemment, le fait d’optimiser un code existant est particulièrement intéressant et gratifiant, car cela permet de mieux visualiser l’impact que peuvent avoir des choix inadaptés de structures de données, d’algorithmes ou d’accès mémoire sur les performances globales d’une application.
+
+Au début du laboratoire, il est indiqué qu’il est nécessaire d’ajouter plusieurs paquets dans Buildroot. Toutefois, une partie des options requises est déjà activée par défaut et la commande `perf list` ne nous a pas permis d’identifier l’absence de l’option `BR2_PACKAGE_BINUTILS_TARGET`. Ce point n’a été constaté qu’au moment de l’utilisation de `perf report`, qui nécessite la présence de l’outil `addr2line`.
 Afin de faciliter la procédure et d’éviter cette ambiguïté, il pourrait être interessant d’ajouter dans le codelab une étape de vérification de la disponibilité de `addr2line` avant l’utilisation des outils perf.
 
