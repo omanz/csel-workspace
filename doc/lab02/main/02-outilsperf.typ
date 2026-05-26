@@ -38,8 +38,9 @@ L'execution du programme prend environ 42 secondes dont la majeur partie en espa
 Le compteur d'instruction indique que le CPU passe le principal de son temps à attendre (0.05 insn per cycle). Le branch-misses est raisonnable (0.37%). Le programme a subi 20 changements de contexte durant son exécutionle ce qui est également raisonnable.
 
 #thinkbox()[Ce programme contient une erreur triviale qui empêche une utilisation optimale du cache. De quelle erreur s’agit-il ?]
-Le programme parcours le tableau par colonnes au lieu de lignes. Il fait donc des sauts entre les adresses memoire au lieu de modifier des emplacement mémoire contigu. En effet, le cache depend de la localité spatiale et temporelle: il faut que 2 opérations qui utilisent une même zone mémoire soient faites proche dans le temps.
+Le programme parcours le tableau par colonnes au lieu de lignes. Il fait donc des sauts entre les adresses mémoire au lieu de modifier des emplacement mémoire continu. En effet, le cache depend de la localité spatiale et temporelle: il faut que 2 opérations qui utilisent une même zone mémoire soient faites proche dans le temps.
 Notre analyse est confirmée par la commande `perf stat -e cache-misses ./ex1`. Elle nous permet de voir que le cache misses est très élevé, le cache mémoire est donc mal utilisé.
+#pagebreak()
 ```
 # perf stat -e cache-misses ./ex1
  Performance counter stats for './ex1':
@@ -281,7 +282,7 @@ Finalement, en ajoutant encore 2 optimisations (éviter la copie de `std::string
 == Mesure de la latence et de la gigue (jitter)
 #thinkbox()[Décrivez comment devrait-on procéder pour mesurer la latence et la gigue d’interruption, ceci aussi bien au niveau du noyau (kernel space) que de l’application (user space).]
 
-Pour mesurer la latence et la gigue d'une interruption au niveau du noyau, on peut utiliser un GPIO qui changera d'état au moment de la requète d'interruption. Il faut activer une interruption sur un GPIO et activer un autre GPIO pour mesurer le temps entre les deux signaux grâce à un oscilloscope ou un analyseur logique. La latence correspond au temps entre le signal de requête et le signal d'éxecution de l'interruption, tandis que la gigue correspond à la variation de cette latence sur plusieurs interruptions.
+Pour mesurer la latence et la gigue d'une interruption au niveau du noyau, on peut déclancher une interruption à l'aide d'un GPIO configuré en entrée. Au début de l'ISR, activer un GPIO pour mesurer le temps entre les deux signaux grâce à un oscilloscope ou un analyseur logique. La latence correspond au temps entre le signal de requête et le signal d'éxecution de l'interruption, tandis que la gigue correspond à la variation de cette latence sur plusieurs interruptions.
 
 Pour les mesurer au niveau de l'application, nous ne pouvons pas utiliser la technique d'écrire dans `/sys/class/gpio/...` pour faire du toggling de GPIO, car cela introduit une latence supplémentaire due à l'accès au système de fichiers. En revanche il est possible d'utiliser la méthode `mmap()` pour accéder directement aux registres du GPIO, ce qui permet de réduire la latence et d'obtenir des mesures plus précises. En utilisant `mmap()`, l'application peut directement contrôler les GPIOs sans passer par le système de fichiers, ce qui minimise les délais et permet de mesurer la latence et la gigue de manière plus précise.
 
