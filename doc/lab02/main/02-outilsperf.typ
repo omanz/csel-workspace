@@ -323,3 +323,7 @@ Finalement, en ajoutant encore 2 optimisations (éviter la copie de `std::string
 
 == Mesure de la latence et de la gigue (jitter)
 #thinkbox()[Décrivez comment devrait-on procéder pour mesurer la latence et la gigue d’interruption, ceci aussi bien au niveau du noyau (kernel space) que de l’application (user space).]
+
+Pour mesurer la latence et la gigue d'une interruption au niveau du noyau, on peut utiliser un GPIO qui changera d'état au moment de la requète d'interruption. Il faut activer une interruption sur un GPIO et activer un autre GPIO pour mesurer le temps entre les deux signaux grâce à un oscilloscope ou un analyseur logique. La latence correspond au temps entre le signal de requête et le signal d'éxecution de l'interruption, tandis que la gigue correspond à la variation de cette latence sur plusieurs interruptions.
+
+Pour les mesurer au niveau de l'application, nous ne pouvons pas utiliser la technique d'écrire dans `/sys/class/gpio/...` pour faire du toggling de GPIO, car cela introduit une latence supplémentaire due à l'accès au système de fichiers. En revanche il est possible d'utiliser la méthode `mmap()` pour accéder directement aux registres du GPIO, ce qui permet de réduire la latence et d'obtenir des mesures plus précises. En utilisant `mmap()`, l'application peut directement contrôler les GPIOs sans passer par le système de fichiers, ce qui minimise les délais et permet de mesurer la latence et la gigue de manière plus précise.
