@@ -15,8 +15,7 @@ Une contrainte supplémentaire impose l’utilisation du multiplexage des entré
 
 Dans la deuxième partie du laboratoire (Multiprocessing et Ordonnanceur) permet d'exercer la communication interprocessus, la gestion des signaux et le contrôle des ressources à l’aide des CGroups à l'aide de plusieurs exercices.
 
-== Travail réalisé
-=== Système de fichiers
+== Système de fichiers
 Nous commencons par ajouter la possibilité de modifier la fréquence de clignotement à l'aide des boutons. Afin d’identifier les GPIO associés aux boutons K1, K2 et K3 ainsi qu’à la LED verte, il est nécessaire de monter le système de fichiers debugfs afin d’accéder aux informations correspondantes, comme illustré ci-dessous.
 
 Nous développons une application qui utilise ces GPIO pour contrôler la fréquence de clignotement de la LED en fonction des boutons pressés.
