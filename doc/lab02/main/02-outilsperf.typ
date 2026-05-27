@@ -1,4 +1,6 @@
 #import "../metadata.typ": *
+#import "/common.typ": *
+
 #pagebreak()
 #show heading.where(level: 1): (it) => {
   set text(size: 22pt)
@@ -13,13 +15,13 @@
 }
 
 = Outils d'analyse de performance pour Linux
+== Résumé du laboratoire
+Ce laboratoire porte sur l'analyse de performances sous Linux avec `perf` : optimisation de l'utilisation du cache processeur, de la prédiction de branchement et d'un parseur de logs Apache.
 == Exercice 01
-#thinkbox()[Sans options spécifiques, la commande mesure par défaut un certain nombre de compteurs. Relevez par exemple les compteurs du nombre de context-switches et d’instructions ainsi que le temps d’exécution.]
+Nous exécutons le programme situé dans le dossier _src/06_optimization/ex01_ en utilisant la commande `perf stat`.
 ```
 # perf stat ./ex1 
-
  Performance counter stats for './ex1':
-
           41986.51 msec task-clock                #    1.000 CPUs utilized          
                 20      context-switches          #    0.476 /sec                   
                  0      cpu-migrations            #    0.000 /sec                   
@@ -30,17 +32,16 @@
            1011106      branch-misses             #    0.37% of all branches        
 
       42.005333145 seconds time elapsed
-
       41.311481000 seconds user
        0.280660000 seconds sys
 ```
 L'execution du programme prend environ 42 secondes dont la majeur partie en espace utilisateur. Nous en déduisons qu'il travaille probablement peu avec les I/O et fait majoritairement du calcul pur et des accès mémoire.
-Le compteur d'instruction indique que le CPU passe le principal de son temps à attendre (0.05 insn per cycle). Le branch-misses est raisonnable (0.37%). Le programme a subi 20 changements de contexte durant son exécutionle ce qui est également raisonnable.
+Le compteur d'instruction indique que le CPU passe le principal de son temps à attendre (0.05 insn per cycle). Le branch-misses est raisonnable (0.37%). Le programme a subi 20 changements de contexte durant son exécution, ce qui est également raisonnable.
 
-#thinkbox()[Ce programme contient une erreur triviale qui empêche une utilisation optimale du cache. De quelle erreur s’agit-il ?]
-Le programme parcours le tableau par colonnes au lieu de lignes. Il fait donc des sauts entre les adresses mémoire au lieu de modifier des emplacement mémoire continu. En effet, le cache depend de la localité spatiale et temporelle: il faut que 2 opérations qui utilisent une même zone mémoire soient faites proche dans le temps.
+#questionbox()[Ce programme contient une erreur triviale qui empêche une utilisation optimale du cache. De quelle erreur s’agit-il ?]
+Le programme parcourt le tableau par colonnes au lieu de lignes. Il fait donc des sauts entre les adresses mémoire au lieu de modifier des emplacement mémoire contigus. En effet, le cache dépend de la localité spatiale et temporelle: il faut que 2 opérations qui utilisent une même zone mémoire soient faites proche dans le temps.
 Notre analyse est confirmée par la commande `perf stat -e cache-misses ./ex1`. Elle nous permet de voir que le cache misses est très élevé, le cache mémoire est donc mal utilisé.
-#pagebreak()
+
 ```
 # perf stat -e cache-misses ./ex1
  Performance counter stats for './ex1':
@@ -51,12 +52,10 @@ Notre analyse est confirmée par la commande `perf stat -e cache-misses ./ex1`. 
 ```
 
 
-#thinkbox()[Corrigez l’erreur, recompilez et mesurez à nouveau le temps d’exécution (soit avec perf stat, soit avec la commande time). Quelle amélioration constatez-vous ?]
+#questionbox()[Corrigez l’erreur, recompilez et mesurez à nouveau le temps d’exécution (soit avec perf stat, soit avec la commande time). Quelle amélioration constatez-vous ?]
 ```
 # perf stat ./ex1 
-
  Performance counter stats for './ex1':
-
            2409.50 msec task-clock                #    0.992 CPUs utilized          
                 17      context-switches          #    7.055 /sec                   
                  0      cpu-migrations            #    0.000 /sec                   
@@ -67,10 +66,8 @@ Notre analyse est confirmée par la commande `perf stat -e cache-misses ./ex1`. 
             653992      branch-misses             #    0.25% of all branches        
 
        2.429980293 seconds time elapsed
-
        2.165846000 seconds user
        0.222076000 seconds sys
-
 
 # perf stat -e cache-misses ./ex1
  Performance counter stats for './ex1':
@@ -91,16 +88,15 @@ Notre analyse est confirmée par la commande `perf stat -e cache-misses ./ex1`. 
     [*Amélioration*],
   ),
 
-  [Temps d'exécution], [42.0 s], [2.4 s], [~17× plus rapide],
-  [insn per cycle], [0.05], [0.70], [14× meilleur],
-  [task-clock], [41 986 ms], [2 409 ms], [~17× moins de CPU],
+  [Temps d'exécution], [42.0 s], [2.4 s], [~17x plus rapide],
+  [insn per cycle], [0.05], [0.70], [~14x meilleur],
+  [cache-misses], [406 897 743], [1 244 933], [~327x moins],
   [Instructions], [1.67 Mrd], [1.38 Mrd], [similaire],
-  [Fréquence effective], [0.816 GHz], [0.816 GHz], [inchangée],
 )
-Le nombre d'instructions est quasi identique, donc le programme fait le même travail, mais 17x plus vite.
+Le nombre d'instructions est quasi identique, donc le programme fait le même travail, mais le CPU attend ~14× moins.
 Le nombre de cache-misses est maintenant bien plus faible.
 
-#thinkbox()[Relevez les valeurs du compteur L1-dcache-load-misses pour les deux versions de l’application. Quel facteur constatez-vous entre les deux valeurs ?
+#questionbox()[Relevez les valeurs du compteur L1-dcache-load-misses pour les deux versions de l’application. Quel facteur constatez-vous entre les deux valeurs ?
 `# perf stat -e L1-dcache-load-misses ./ex1`]
 #table(
   columns: (1fr, 1fr),
@@ -109,18 +105,18 @@ Le nombre de cache-misses est maintenant bien plus faible.
 
   [*Version initiale*], [*Version corrigée*],
 
-  [
+  [#show raw: set text(size: 7pt)
 ```
 # perf stat -e L1-dcache-load-misses ./ex1
  Performance counter stats for './ex1':
-         406972967      L1-dcache-load-misses                                       
+         406972967      L1-dcache-load-misses
       40.687446478 seconds time elapsed
       39.986415000 seconds user
        0.288499000 seconds sys
 ```
 ],
 
-[
+[#show raw: set text(size: 7pt)
 ```
 # perf stat -e L1-dcache-load-misses ./ex1
  Performance counter stats for './ex1':
@@ -133,7 +129,7 @@ Le nombre de cache-misses est maintenant bien plus faible.
 )
 La version corrigée génère environ 300 fois moins de miss L1 que la version initiale. C'est la preuve que l'erreur était un problème de localité mémoire: le CPU devait aller chercher les données hors du cache L1 à presque chaque accès dans la version originale.
 
-#thinkbox()[Décrivez brièvement ce que sont les évènements suivants :]
+#questionbox()[Décrivez brièvement ce que sont les évènements suivants :]
  *instructions* : nombre total d'instructions exécutées par le processeur. Cet indicateur donne une idée de la quantité de travail réellement effectuée par le programme. Il est souvent comparé au nombre de cycles pour calculer l'IPC (Instructions Per Cycle).
 
 - *cache-misses* : nombre d'accès mémoire qui n'ont pas trouvé les données dans le cache du processeur. Le CPU doit alors récupérer les données depuis un niveau de cache inférieur (L2, L3) ou directement depuis la RAM, ce qui augmente fortement le temps d'exécution.
@@ -147,7 +143,7 @@ La version corrigée génère environ 300 fois moins de miss L1 que la version i
 - *context-switches* : nombre de changements de contexte entre processus ou threads. Lorsqu'un changement a lieu, le système sauvegarde l'état courant puis charge celui d'une autre tâche. Un nombre élevé indique souvent beaucoup de multitâche ou d'attente sur des ressources par exemple.
 
 
-#thinkbox()[Lors de la présentation de l’outil perf, on a vu que celui-ci permettait de profiler une application avec très peu d’impacts sur les performances. En utilisant la commande time, mesurez le temps d’exécution de notre application ex1 avec et sans la commande perf stat.]
+#questionbox()[Lors de la présentation de l’outil perf, on a vu que celui-ci permettait de profiler une application avec très peu d’impacts sur les performances. En utilisant la commande time, mesurez le temps d’exécution de notre application ex1 avec et sans la commande perf stat.]
 #table(
   columns: (1fr, 1fr),
   stroke: 0.5pt,
@@ -189,7 +185,7 @@ user	0m 26.11s
 sys	0m 0.00s
 ```
 === Optimisation
-Après optimisation, les mesures de temps sont également stables. Nous observons une diminution du temps d'execution d'environ 3 secondes.
+Après optimisation, les mesures de temps sont également stables. Nous avons observé une diminution du temps d'execution d'environ 3 secondes.
 ```
 # time ./ex2 
 sum=125454290000
@@ -198,7 +194,7 @@ user	0m 23.38s
 sys	0m 0.00s
 ```
 === Mesures
-#thinkbox()[À l’aide de l’outil perf et de sa sous-commande stat, en utilisant différents compteurs déterminez pourquoi le programme modifié s’exécute plus rapidement.]
+#questionbox()[À l’aide de l’outil perf et de sa sous-commande stat, en utilisant différents compteurs déterminez pourquoi le programme modifié s’exécute plus rapidement.]
 
 *Version non optimisée*
 ```
@@ -250,16 +246,16 @@ Après le tri du tableau, le branchement devient plus prévisible : il reste fau
 Malgré le coût du qsort(), le tri n'est effectué qu'une seule fois alors que la boucle est répétée 10'000 fois, ce qui explique la diminution du temps d'exécution.
 
 == Parsing de logs apache
-#thinkbox()[
+#questionbox()[
 Avec les instructions précédentes, déterminez quelle fonction de notre application fait (indirectement) appel à `std::operator==<char>`.]
 
-L'option `--no-children` de la commande `perf report --no-children --demangle` masque une partie des informations hiérarchiques. En utilisant la commande `perf report -g graph --demangle` , nous pouvons développer la hierarchie avec `+`
+L'option `--no-children` de la commande `perf report --no-children --demangle` masque une partie des informations hiérarchiques. En utilisant la commande `perf report -g graph --demangle` , nous pouvons développer la hiérarchie avec `+`
 En remontant la callchain dans `perf report`, on observe que `std::operator==<char>` est appelée indirectement depuis `HostCounter::isNewHost()`. Cette fonction utilise `std::find()` pour vérifier si un hôte est déjà présent, ce qui entraîne de nombreuses comparaisons de chaînes. 
 
 === Optimisation algorithmique
 La solution proposée dans le codelab remplace le `std::vector` par un `std::set`. La recherche passe de O(n) à O(log(n)) mais l'insertion est un peu plus lente en passant de O(1) à O(log n) car `set` permet une recherche dans un arbre structuré.
 
-L'amélioration est drastique, on passe de plus de 2 minutes d'execution à un peu plus de 2 secondes.
+L'amélioration est considérable, on passe de plus de 2 minutes d'execution à un peu plus de 2 secondes.
 ```
 # time ./read-apache-logs access_log_NASA_Jul95_samples
 Processing log file access_log_NASA_Jul95_samples
@@ -277,34 +273,35 @@ sys	0m 0.10s
 Plutôt que d'utiliser un `set`, nous améliorons encore les performances avec un `unordered_set`: il permet des recherches et insertions en O(1) moyen grâce à une table de hachage, contrairement à O(log n) pour un arbre équilibré.
 Puisque le gain est moins remarquable, nous utilisons un script (`tempsmoyen.sh`) pour mesurer la moyenne de temps d'execution (hyperfine n'étant pas disponible sur notre cible). Cette dernière modification nous permet de passer de 2.273 secondes en moyenne à 2.225 secondes sur le fichier `access_log_NASA_Jul95_samples` et sur le fichier `access_log_NASA_Jul95` de 18.194 secondes à 18 secondes.
 
-Finalement, en ajoutant encore 2 optimisations (éviter la copie de `std::string hostname` et profiter de la propriété de `insert` qui n'insère un élement que si il n'est pas présent), nous descendons à une moyenne de 17.996 secondes pour le fichier `access_log_NASA_Jul95`.
+Finalement, en ajoutant encore 2 optimisations (éviter la copie de `std::string hostname` et profiter de la propriété de `insert` qui n'insère un élement que s'il n'est pas présent), nous descendons à une moyenne de 17.996 secondes pour le fichier `access_log_NASA_Jul95`.
 
 == Mesure de la latence et de la gigue (jitter)
-#thinkbox()[Décrivez comment devrait-on procéder pour mesurer la latence et la gigue d’interruption, ceci aussi bien au niveau du noyau (kernel space) que de l’application (user space).]
+#questionbox()[Décrivez comment devrait-on procéder pour mesurer la latence et la gigue d’interruption, ceci aussi bien au niveau du noyau (kernel space) que de l’application (user space).]
 
-Pour mesurer la latence et la gigue d'une interruption au niveau du noyau, on peut déclancher une interruption à l'aide d'un GPIO configuré en entrée. Au début de l'ISR, activer un GPIO pour mesurer le temps entre les deux signaux grâce à un oscilloscope ou un analyseur logique. La latence correspond au temps entre le signal de requête et le signal d'éxecution de l'interruption, tandis que la gigue correspond à la variation de cette latence sur plusieurs interruptions.
+Pour mesurer la latence et la gigue d'une interruption au niveau du noyau, on peut déclencher une interruption à l'aide d'un GPIO configuré en entrée. Au début de l'ISR, activer un GPIO pour mesurer le temps entre les deux signaux grâce à un oscilloscope ou un analyseur logique. La latence correspond au temps entre le signal de requête et le signal d'exécution de l'interruption, tandis que la gigue correspond à la variation de cette latence sur plusieurs interruptions.
 
-Pour les mesurer au niveau de l'application, nous ne pouvons pas utiliser la technique d'écrire dans `/sys/class/gpio/...` pour faire du toggling de GPIO, car cela introduit une latence supplémentaire due à l'accès au système de fichiers. En revanche il est possible d'utiliser la méthode `mmap()` pour accéder directement aux registres du GPIO, ce qui permet de réduire la latence et d'obtenir des mesures plus précises. En utilisant `mmap()`, l'application peut directement contrôler les GPIOs sans passer par le système de fichiers, ce qui minimise les délais et permet de mesurer la latence et la gigue de manière plus précise.
+Pour les mesurer au niveau de l'application, nous ne pouvons pas utiliser la technique d'écrire dans `/sys/class/gpio/...` pour faire du toggling de GPIO, car cela introduit une latence supplémentaire due à l'accès au système de fichiers. En revanche il est possible d'utiliser l'appel système `mmap()` pour accéder directement aux registres du GPIO, ce qui permet de réduire la latence et d'obtenir des mesures plus précises. En utilisant `mmap()`, l'application peut directement contrôler les GPIOs sans passer par le système de fichiers, ce qui minimise les délais et permet de mesurer la latence et la gigue de manière plus précise.
 
+#pagebreak()
 
 == Synthèse sur ce qui a été appris/exercé
-Lors de ce laboratoire, nous utilisons différents outils d’analyse de performances sous Linux, principalement `perf`, afin de mesurer et d’identifier les causes de ralentissement dans plusieurs applications.
+Lors de ce laboratoire, nous avons utilisé différents outils d’analyse de performances sous Linux, principalement `perf`, afin de mesurer et d’identifier les causes de ralentissement dans plusieurs applications.
 
-Dans le premier exercice, nous mettons en évidence l’impact de la localité mémoire et de l’utilisation du cache processeur. L’analyse des compteurs de performance permet d’identifier un parcours mémoire inefficace provoquant un nombre élevé de *cache-misses*. 
+Dans le premier exercice, nous avons mis en évidence l’impact de la localité mémoire et de l’utilisation du cache processeur. L’analyse des compteurs de performance permet d’identifier un parcours mémoire inefficace provoquant un nombre élevé de *cache-misses*. 
 
 Le second exercice permet d’étudier l’impact de la prédiction de branchement du processeur. Nous observons qu’une simple réorganisation des données réduit fortement le nombre de *branch-misses* et améliore le temps d’exécution.
 
-La partie consacrée au parsing des logs Apache met en évidence l’importance des choix algorithmiques et des structures de données. Le remplacement d’une recherche linéaire par des structures adaptées (`set`, puis `unordered_set`) permet une réduction importante du temps d’exécution.
+La partie consacrée au parsing des logs Apache a mis en évidence l’importance des choix algorithmiques et des structures de données. Le remplacement d’une recherche linéaire par des structures adaptées (`set`, puis `unordered_set`) permet une réduction importante du temps d’exécution.
 
 == Remarques et choses à retenir
 Les compteurs matériels accessibles via `perf` permettent d’identifier plus précisément les causes d’un ralentissement, notamment les défauts de cache, les erreurs de prédiction de branchement ou les changements de contexte.
 
-La manière de programmer, que ce soit pour le choix des structures de donnée, ou l'ordre d'accès aux données, a une enorme importance sur les performances.
+La manière de programmer, que ce soit pour le choix des structures de donnée, ou l'ordre d'accès aux données, a une énorme importance sur les performances.
 L’utilisation de `perf` introduit une légère surcharge d’exécution, mais peut sans autre être utilisée pour identifier les causes de lenteur dans l'execution d'une application.
 
 == Feedback personnel sur le laboratoire
 Comme précédemment, le fait d’optimiser un code existant est particulièrement intéressant et gratifiant, car cela permet de mieux visualiser l’impact que peuvent avoir des choix inadaptés de structures de données, d’algorithmes ou d’accès mémoire sur les performances globales d’une application.
 
 Au début du laboratoire, il est indiqué qu’il est nécessaire d’ajouter plusieurs paquets dans Buildroot. Toutefois, une partie des options requises est déjà activée par défaut et la commande `perf list` ne nous a pas permis d’identifier l’absence de l’option `BR2_PACKAGE_BINUTILS_TARGET`. Ce point n’a été constaté qu’au moment de l’utilisation de `perf report`, qui nécessite la présence de l’outil `addr2line`.
-Afin de faciliter la procédure et d’éviter cette ambiguïté, il pourrait être interessant d’ajouter dans le codelab une étape de vérification de la disponibilité de `addr2line` avant l’utilisation des outils perf.
+Afin de faciliter la procédure et d’éviter cette ambiguïté, il pourrait être intéressant d’ajouter dans le codelab une étape de vérification de la disponibilité de `addr2line` avant l’utilisation des outils perf.
 
