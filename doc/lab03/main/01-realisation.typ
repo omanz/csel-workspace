@@ -40,3 +40,4 @@ Le daemon userspace doit :
 - Écrire dans le sysfs pour changer mode/fréquence
 - Afficher sur l'écran OLED : mode, température, fréquence
 
+Je me base sur le fichier /workspace/src/04_system/silly/silly_led_control.c qui gère deja une led et des boutons.
