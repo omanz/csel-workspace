@@ -5,7 +5,7 @@
 // Document options
 //
 #let option = (
-  type : sys.inputs.at("type", default:"draft"),    // [draft|final]
+  type : sys.inputs.at("type", default:"final"),    // [draft|final]
   lang : sys.inputs.at("lang", default:"fr"),       // [en|fr|de]
 )
 //-------------------------------------
@@ -79,7 +79,7 @@
     semester : "Semestre printemps 2026",
   ),
   keywords : ("Typst", "Template", "Report", "HES-SO", "Engineering"),
-  version  : "v0.1.0",
+  version  : "v1.0",
 )
 
 #let date= datetime.today()
