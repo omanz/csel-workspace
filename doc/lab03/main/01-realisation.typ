@@ -33,3 +33,10 @@ La frequence est atteignable via `/sys/class/fanctl/fanctl/frequency` et peut al
 Le mode est atteignable via `/sys/class/fanctl/fanctl/mode` et prend les valeurs `auto` et `manual`.
 
 La lecture de la température peut être testée via `cat /sys/class/thermal/thermal_zone0/temp`.
+
+=== Deamon en espace utilisateur
+Le daemon userspace doit :
+- Lire les boutons S1/S2/S3 via interruptions
+- Écrire dans le sysfs pour changer mode/fréquence
+- Afficher sur l'écran OLED : mode, température, fréquence
+
