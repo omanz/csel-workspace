@@ -45,6 +45,14 @@ static int open_led()
     f = open(GPIO_LED "/value", O_RDWR);
     return f;
 }
+
+static void blink_power_led(int led_fd)
+{
+    pwrite(led_fd, "1", 1, 0);
+    usleep(100000);   // 100ms
+    pwrite(led_fd, "0", 1, 0);
+}
+
 int open_key(const char* k)
 {
     // unexport pin out of sysfs (reinitialization)
@@ -111,12 +119,12 @@ int main(int argc, char* argv[])
         for (int i = 0; i < nb_events; i++) {
             if (ev[i].data.fd == k1) {           
                 syslog(LOG_INFO, "S1: increase frequency\n");
-                // blink power led
+                blink_power_led(led);
                 // modify frequency on sysfs
             }
             else if (ev[i].data.fd == k2) {
                 syslog(LOG_INFO, "S2: decrease frequency\n");
-                // blink power led
+                blink_power_led(led);
                 // modify frequency on sysfs
             }
             else if (ev[i].data.fd == k3) {

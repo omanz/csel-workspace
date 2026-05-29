@@ -45,5 +45,9 @@ Le daemon userspace doit :
 Le deamon gère la led Power (gpiol.10 --> gpio362 selon silly_led_control.c))
 Je me base sur le fichier /workspace/src/04_system/silly/silly_led_control.c qui gère deja une led et des boutons.
 Je veux voir mes logs avec `tail -f /var/log/messages`
+Prochaine étape:
+blink de la led lors de l'appui sur un bouton
+
+
 Prochaine étape, aller communiquer avec le module noyau via sysfs pour lire la température par exemple
 question: taux de rafraichissement de l'écran?
