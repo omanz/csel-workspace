@@ -53,4 +53,23 @@ Prochaine étape, aller communiquer avec le module noyau via sysfs pour lire la 
 La lecture de la temperature a déjà été faite dans 01_environement/system_calls/syscall.c
 On s'en inspire pour lire la température. Celle-ci devra être lue périodiquement à l'aide d'un timer pour l'affichage sur l'écran
 
+Dans la lancée, on continue avec la lecture des sysfs exportés par notre module.
+(frequence et mode)
+On se rend compte qu'il est plus aisé de retourner des int plutot que des char pour les comparaisons.
+Or on lis du sysfs une string, que on converti en int. On fesait l'inverse dans le module ce qui double le travail. Mais on maintient cette manière de faire car il nous semble plus "user friendly" de retourner une string comprehensible en interrogeant le sysfs que un numero qu'il faut interpréter.
+
 question: taux de rafraichissement de l'écran?
+
+== Difficulté
+Lors de la création du deamon, nous avons par erreur exporté la led gpui10 plustot que la led de power.
+Nous avons corrigé notre erreur, relancé le deamon, mais la led reste exportée.
+Lorsque nous avons rechargé le module, nous obtenions l'erreur
+```
+# insmod fanctl.ko 
+insmod: can't insert 'fanctl.ko': Device or resource busy
+```
+Nous avons pris un moment pour comprendre que l'erreur venait de la led qui était deja exporté dans le sysfs. Il suffisait alors de la désexporter: `echo 10 > /sys/class/gpio/unexport` mais l'analyse nous a pris du temps.
+Il nous aurai suffit pourtant de regarder le `dmesg` où l'erreur était explicite
+```
+[ 4649.442718] fanctl: failed to request gpio 10
+```

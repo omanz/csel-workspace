@@ -24,6 +24,9 @@
 #define K2            "2"
 #define K3            "3"
 
+#define SYSFS_FAN_FREQ   "/sys/class/fanctl/fanctl/frequency"
+#define SYSFS_FAN_MODE   "/sys/class/fanctl/fanctl/mode"
+
 static int open_led()
 {
     // unexport pin out of sysfs (reinitialization)
@@ -84,10 +87,10 @@ int open_key(const char* k)
     return open(path, O_RDONLY);
 }
 
-/* returns CPU temperature in milli-degrees Celsius */
+/* returns CPU temperature in milli-degrees Celsius. returns -1 in case of error */
 static int read_cpu_temp(void)
 {
-    int temp = 99000;
+    int temp = -1;
 	int f = open("/sys/class/thermal/thermal_zone0/temp", O_RDONLY);
 	if (f >= 0) {
 		char val[50] = "";
@@ -97,8 +100,41 @@ static int read_cpu_temp(void)
 			temp = atoi(val);
 		}
 	}
-	syslog(LOG_INFO, "CPU temp: %d.%02d°C", temp / 1000, (temp / 10) % 100);
     return temp;
+}
+
+/* returns current fan frequency in Hz */
+static int read_frequency(void)
+{
+    int freq = -1;
+    char val[8] = "";   // freq [1;20]
+
+    int f = open(SYSFS_FAN_FREQ, O_RDONLY);
+    if (f >= 0) {
+        ssize_t r = read(f, val, sizeof(val));
+        close(f);
+        if (r > 0)
+            freq = atoi(val);
+    }
+    return freq;
+}
+
+/* returns current fan mode: 0=auto, 1=manual, -1=error */
+static int read_mode(void)
+{
+    char val[16] = "";
+
+    int f = open(SYSFS_FAN_MODE, O_RDONLY);
+    if (f >= 0) {
+        ssize_t r = read(f, val, sizeof(val));
+        close(f);
+    } else {
+        return -1;
+    }
+
+    if (strncmp(val, "auto", 4) == 0)   return 0;
+    if (strncmp(val, "manual", 6) == 0) return 1;
+    return -1;
 }
 
 int main(int argc, char* argv[])
@@ -147,7 +183,12 @@ int main(int argc, char* argv[])
             else if (ev[i].data.fd == k3) {
                 syslog(LOG_INFO, "toggle mode\n");
                 // modify mode on sysfs
-                read_cpu_temp();
+                int temp = read_cpu_temp();
+                syslog(LOG_INFO, "CPU temp: %d.%02d°C", temp / 1000, (temp / 10) % 100);
+                int mode = read_mode();
+                syslog(LOG_INFO, "Fan mode: %s", mode>0?"manual":"auto");
+                read_frequency();
+                syslog(LOG_INFO, "Fan freq: %d Hz", read_frequency());
             }
         }
     }
