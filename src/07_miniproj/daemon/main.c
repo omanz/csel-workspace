@@ -136,6 +136,7 @@ static int write_fan_freq(int freq) {
 }
 
 /* returns current fan mode: 0=auto, 1=manual, -1=error */
+// TODO: read en string pour ne pas s'embrouiller
 static int read_mode(void)
 {
     char val[16] = "";
@@ -192,6 +193,9 @@ int main(int argc, char* argv[])
         nb_events = epoll_wait(epll_fd, ev, 3, -1);
         for (int i = 0; i < nb_events; i++) {
             if (ev[i].data.fd == k1) {           
+
+                // TODO: verifier le mode avant et afficher une erreur.
+                // TODO: blink la led differemment si erreur? ou ne pas la blink? (probablement pas ne pas la blink)
                 syslog(LOG_INFO, "S1: increase frequency\n");
                 blink_power_led(led);
                 // modify frequency on sysfs: read to know the value and increase
