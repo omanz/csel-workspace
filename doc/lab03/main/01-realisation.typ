@@ -34,10 +34,16 @@ Le mode est atteignable via `/sys/class/fanctl/fanctl/mode` et prend les valeurs
 
 La lecture de la température peut être testée via `cat /sys/class/thermal/thermal_zone0/temp`.
 
+Le module gère la led status (gpiol.10 --> gpio10 selon silly_led_control.c))
+
 === Deamon en espace utilisateur
 Le daemon userspace doit :
 - Lire les boutons S1/S2/S3 via interruptions
 - Écrire dans le sysfs pour changer mode/fréquence
 - Afficher sur l'écran OLED : mode, température, fréquence
 
+Le deamon gère la led Power (gpiol.10 --> gpio362 selon silly_led_control.c))
 Je me base sur le fichier /workspace/src/04_system/silly/silly_led_control.c qui gère deja une led et des boutons.
+Je veux voir mes logs avec `tail -f /var/log/messages`
+Prochaine étape, aller communiquer avec le module noyau via sysfs pour lire la température par exemple
+question: taux de rafraichissement de l'écran?

@@ -19,7 +19,7 @@
 #define GPIO_EXPORT   "/sys/class/gpio/export"
 #define GPIO_UNEXPORT "/sys/class/gpio/unexport"
 #define GPIO_LED      "/sys/class/gpio/gpio362"
-#define LED           "10"
+#define LED           "362"
 #define K1            "0"
 #define K2            "2"
 #define K3            "3"
@@ -86,6 +86,7 @@ int main(int argc, char* argv[])
     char led_state = '1';
     int led = open_led();
 
+    // ecouter les fichiers pour savoir si il y a un appuis bouton
     int k1 = open_key(K1);
     ev[0].events = EPOLLET; // edge triggered
     ev[0].data.fd = k1;
