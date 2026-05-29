@@ -84,6 +84,23 @@ int open_key(const char* k)
     return open(path, O_RDONLY);
 }
 
+/* returns CPU temperature in milli-degrees Celsius */
+static int read_cpu_temp(void)
+{
+    int temp = 99000;
+	int f = open("/sys/class/thermal/thermal_zone0/temp", O_RDONLY);
+	if (f >= 0) {
+		char val[50] = "";
+		ssize_t r = read (f, val, sizeof(val));
+		close (f);
+		if (r > 0) {
+			temp = atoi(val);
+		}
+	}
+	syslog(LOG_INFO, "CPU temp: %d.%02d°C", temp / 1000, (temp / 10) % 100);
+    return temp;
+}
+
 int main(int argc, char* argv[])
 {
     openlog("fanctl_daemon", LOG_PID, LOG_USER);
@@ -130,6 +147,7 @@ int main(int argc, char* argv[])
             else if (ev[i].data.fd == k3) {
                 syslog(LOG_INFO, "toggle mode\n");
                 // modify mode on sysfs
+                read_cpu_temp();
             }
         }
     }

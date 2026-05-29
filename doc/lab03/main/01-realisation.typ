@@ -50,4 +50,7 @@ blink de la led lors de l'appui sur un bouton
 
 
 Prochaine étape, aller communiquer avec le module noyau via sysfs pour lire la température par exemple
+La lecture de la temperature a déjà été faite dans 01_environement/system_calls/syscall.c
+On s'en inspire pour lire la température. Celle-ci devra être lue périodiquement à l'aide d'un timer pour l'affichage sur l'écran
+
 question: taux de rafraichissement de l'écran?
