@@ -89,17 +89,17 @@ int main(int argc, char* argv[])
     int k1 = open_key(K1);
     ev[0].events = EPOLLET; // edge triggered
     ev[0].data.fd = k1;
-    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k1, &ev[1]);
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k1, &ev[0]);
 
     int k2 = open_key(K2);
     ev[1].events = EPOLLET; // edge triggered
     ev[1].data.fd = k2;
-    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k2, &ev[2]);
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k2, &ev[1]);
 
     int k3 = open_key(K3);
     ev[2].events = EPOLLET; // edge triggered
     ev[2].data.fd = k3;
-    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k3, &ev[3]);
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k3, &ev[2]);
     
     syslog(LOG_INFO, "fanctl daemon started\n");
 
