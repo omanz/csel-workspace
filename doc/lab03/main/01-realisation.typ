@@ -58,6 +58,12 @@ Dans la lancée, on continue avec la lecture des sysfs exportés par notre modul
 On se rend compte qu'il est plus aisé de retourner des int plutot que des char pour les comparaisons.
 Or on lis du sysfs une string, que on converti en int. On fesait l'inverse dans le module ce qui double le travail. Mais on maintient cette manière de faire car il nous semble plus "user friendly" de retourner une string comprehensible en interrogeant le sysfs que un numero qu'il faut interpréter.
 
+== Frequence
+Dans le mode "auto", la fréquence peut prendre les valeurs de 2Hz, 5Hz, 10Hz ou 20Hz
+Or, rien n'est indiqué pour le mode manuel.
+Nous décidons de donner plus de liberté en fesant des pas de 1 pour chaque fréquence avec comme frequence minimale 1Hz et comme frequence maximale 20Hz (c'est ce qui est deja défini dans notre module)
+
+
 question: taux de rafraichissement de l'écran?
 
 == Difficulté

@@ -27,6 +27,9 @@
 #define SYSFS_FAN_FREQ   "/sys/class/fanctl/fanctl/frequency"
 #define SYSFS_FAN_MODE   "/sys/class/fanctl/fanctl/mode"
 
+#define FREQ_MIN    1
+#define FREQ_MAX    20
+
 static int open_led()
 {
     // unexport pin out of sysfs (reinitialization)
@@ -118,6 +121,19 @@ static int read_frequency(void)
     }
     return freq;
 }
+static int write_fan_freq(int freq) {
+    if (freq < FREQ_MIN || freq > FREQ_MAX) {
+        syslog(LOG_ERR, "invalid frequency: %d", freq);
+        return -1;
+    }
+    char val[8];
+    snprintf(val, sizeof(val), "%d", freq);
+
+    int f = open(SYSFS_FAN_FREQ, O_WRONLY);
+    write(f, val, strlen(val));
+    close(f);
+    return 0;
+}
 
 /* returns current fan mode: 0=auto, 1=manual, -1=error */
 static int read_mode(void)
@@ -126,7 +142,7 @@ static int read_mode(void)
 
     int f = open(SYSFS_FAN_MODE, O_RDONLY);
     if (f >= 0) {
-        ssize_t r = read(f, val, sizeof(val));
+        read(f, val, sizeof(val));
         close(f);
     } else {
         return -1;
@@ -136,6 +152,13 @@ static int read_mode(void)
     if (strncmp(val, "manual", 6) == 0) return 1;
     return -1;
 }
+static int write_fan_mode(const char *mode) {
+
+    int f = open(SYSFS_FAN_MODE, O_WRONLY);
+    write(f, mode, strlen(mode));
+    close(f);
+    return 0;
+}
 
 int main(int argc, char* argv[])
 {
@@ -144,7 +167,6 @@ int main(int argc, char* argv[])
     int epll_fd = epoll_create1(0);
     struct epoll_event ev[3];
 
-    char led_state = '1';
     int led = open_led();
 
     // ecouter les fichiers pour savoir si il y a un appuis bouton
@@ -165,7 +187,6 @@ int main(int argc, char* argv[])
     
     syslog(LOG_INFO, "fanctl daemon started\n");
 
-    uint64_t exp;
     int nb_events = 0;
     while (1) {
         nb_events = epoll_wait(epll_fd, ev, 3, -1);
@@ -173,21 +194,46 @@ int main(int argc, char* argv[])
             if (ev[i].data.fd == k1) {           
                 syslog(LOG_INFO, "S1: increase frequency\n");
                 blink_power_led(led);
-                // modify frequency on sysfs
+                // modify frequency on sysfs: read to know the value and increase
+                int freq = read_frequency();
+                if (freq == -1) {
+                    syslog(LOG_ERR, "Unable to change frequency: error during reading frequency");
+                    continue;
+                }
+                if (freq >= FREQ_MAX) {
+                    syslog(LOG_INFO, "frequency already at max (%d Hz)", FREQ_MAX);
+                    continue;
+                }
+                syslog(LOG_INFO, "S2: frequency increased from %d Hz to %d Hz\n", freq, freq+1 );
+                write_fan_freq(freq + 1);
             }
             else if (ev[i].data.fd == k2) {
                 syslog(LOG_INFO, "S2: decrease frequency\n");
                 blink_power_led(led);
-                // modify frequency on sysfs
+                // modify frequency on sysfs: read to know the value and decrease
+                int freq = read_frequency();
+                if (freq == -1) {
+                    syslog(LOG_ERR, "Unable to change frequency: error during reading frequency");
+                    continue;
+                }
+                if (freq <= FREQ_MIN) {
+                    syslog(LOG_INFO, "frequency already at min (%d Hz)", FREQ_MIN);
+                    continue;
+                }
+                syslog(LOG_INFO, "S2: frequency decreased from %d Hz to %d Hz\n", freq, freq-1 );
+                write_fan_freq(freq - 1);
             }
             else if (ev[i].data.fd == k3) {
                 syslog(LOG_INFO, "toggle mode\n");
                 // modify mode on sysfs
                 int temp = read_cpu_temp();
                 syslog(LOG_INFO, "CPU temp: %d.%02d°C", temp / 1000, (temp / 10) % 100);
-                int mode = read_mode();
-                syslog(LOG_INFO, "Fan mode: %s", mode>0?"manual":"auto");
-                read_frequency();
+                int mode_int = read_mode();
+                syslog(LOG_INFO, "Fan mode: %d", mode_int);
+                write_fan_mode(mode_int == 0 ? "manual" : "auto");   // toggle mode
+                mode_int = read_mode();
+                syslog(LOG_INFO, "Fan mode: %d", mode_int);
+                
                 syslog(LOG_INFO, "Fan freq: %d Hz", read_frequency());
             }
         }
