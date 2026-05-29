@@ -66,6 +66,9 @@ Nous décidons de donner plus de liberté en fesant des pas de 1 pour chaque fr�
 
 question: taux de rafraichissement de l'écran?
 
+
+TODO: script pour lancer le deamon parce que chier de faire des ps -aux et des kill pour relancer
+
 == Difficulté
 Lors de la création du deamon, nous avons par erreur exporté la led gpui10 plustot que la led de power.
 Nous avons corrigé notre erreur, relancé le deamon, mais la led reste exportée.
