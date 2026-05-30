@@ -6,6 +6,59 @@
 == Résumé du laboratoire 
 Ce projet est une application permettant de simuler la gestion de la vitesse de rotation d’un ventilateur en fonction de la température du processeur.
 
+== Description de l'application
+
+L'application est composée de trois parties principales : un module noyau, un daemon userspace et une application qui fourni une interface utilisateur en ligne de commande.
+
+=== Module noyau (`fanctl.ko`)
+Le module noyau gère la LED status (gpio10) et expose deux attributs via sysfs :
+- `/sys/class/fanctl/fanctl/frequency` : fréquence de clignotement de la LED, de 1 à 20 Hz
+- `/sys/class/fanctl/fanctl/mode` : mode de fonctionnement (`auto` ou `manual`)
+
+En mode *auto*, la fréquence est déterminée par la température du CPU :
+- < 35°C → 2 Hz
+- < 40°C → 5 Hz
+- < 45°C → 10 Hz
+- ≥ 45°C → 20 Hz
+
+En mode *manual*, la fréquence est fixée par l'utilisateur via les boutons ou l'interface IPC.
+
+=== Daemon userspace (`fanctl_daemon`)
+Le daemon gère :
+- La LED power (gpio362): clignote lors de chaque appui bouton
+- Les boutons S1, S2, S3 via interruptions GPIO
+- L'affichage sur l'écran OLED
+- La communication avec le module via sysfs
+
+L'écran OLED affiche en temps réel :
+- La température du CPU (rafraîchie toutes les secondes)
+- La fréquence de clignotement de la LED status
+- Le mode actuel (auto / manual)
+
+=== Boutons
+#table(
+  columns: (auto, 1fr),
+  [*Bouton*], [*Action*],
+  [S1], [Augmente la fréquence de 1 Hz (mode manuel uniquement)],
+  [S2], [Diminue la fréquence de 1 Hz (mode manuel uniquement)],
+  [S3], [Bascule entre le mode auto et manuel],
+)
+
+En mode auto, les boutons S1 et S2 sont ignorés.
+
+== Installation
+
+=== Prérequis
+- Le device tree OLED doit être installé sur la cible
+- le workspace doit être disponible
+
+=== Compilation
+TODO: faire un makefile global
+TODO: installer sur la cible avec un make install plutot que d'utiliser le workspace?
+
+=== Lancement manuel
+`/workspace/src/07_miniproj/daemon/S60fanctl start`
+
 == Travail réalisé
 === Ecran
 Nous commencons par tester l'écran. Pour ce faire, nous compilons le projet founi a disposition et remplacons le dts sur la cible:
@@ -91,6 +144,7 @@ Lorsque on change de mode pour passer de auto à manual, la dernière fréquence
 
 
 == Difficulté
+=== mauvais export
 Lors de la création du deamon, nous avons par erreur exporté la led gpui10 plustot que la led de power.
 Nous avons corrigé notre erreur, relancé le deamon, mais la led reste exportée.
 Lorsque nous avons rechargé le module, nous obtenions l'erreur
@@ -105,4 +159,4 @@ Il nous aurai suffit pourtant de regarder le `dmesg` où l'erreur était explici
 ```
 
 === strncmp et le sysfs
-sysfs ajoute un retour a la ligne en retournant le mode. Lors de la lecture et la comparaison du mode dans le daemon, attention a tronquer la fin de la châine de caractère. Nous avons utilisé `strncmp`
+sysfs ajoute un retour a la ligne en retournant le mode. Lors de la lecture et la comparaison du mode dans le daemon, attention a tronquer la fin de la châine de caractère. Cela nous a amené quelques déconvenues lors de la comparaison de chaine de caractère.
