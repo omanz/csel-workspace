@@ -68,6 +68,8 @@ question: taux de rafraichissement de l'écran?
 
 == Script
 Nous créons un script en nous inspirant de /workspace/src/01_environment/daemon/S60_appl, que nous nommons `S60fanctl` qui permets de relancer le deamon lors de nos nombreux tests.
+Il charge le module et lance le daemon.
+
 TODO: Il sera installé dans /etc/init.d. Faire Makefile?
 
 
@@ -84,3 +86,6 @@ Il nous aurai suffit pourtant de regarder le `dmesg` où l'erreur était explici
 ```
 [ 4649.442718] fanctl: failed to request gpio 10
 ```
+
+=== strncmp et le sysfs
+sysfs ajoute un retour a la ligne en retournant le mode. Lors de la lecture et la comparaison du mode dans le daemon, attention a tronquer la fin de la châine de caractère. Nous avons utilisé `strncmp`

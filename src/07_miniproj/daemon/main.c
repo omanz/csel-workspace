@@ -135,23 +135,18 @@ static int write_fan_freq(int freq) {
     return 0;
 }
 
-/* returns current fan mode: 0=auto, 1=manual, -1=error */
-// TODO: read en string pour ne pas s'embrouiller
-static int read_mode(void)
+/* returns current fan mode */
+static const char* read_mode(void)
 {
-    char val[16] = "";
+    static char val[16];
 
     int f = open(SYSFS_FAN_MODE, O_RDONLY);
-    if (f >= 0) {
-        read(f, val, sizeof(val));
-        close(f);
-    } else {
-        return -1;
-    }
-
-    if (strncmp(val, "auto", 4) == 0)   return 0;
-    if (strncmp(val, "manual", 6) == 0) return 1;
-    return -1;
+    if (f < 0) return NULL;
+    
+    read(f, val, sizeof(val));
+    close(f);
+    
+    return val;
 }
 static int write_fan_mode(const char *mode) {
 
@@ -194,10 +189,17 @@ int main(int argc, char* argv[])
         for (int i = 0; i < nb_events; i++) {
             if (ev[i].data.fd == k1) {           
 
-                // TODO: verifier le mode avant et afficher une erreur.
                 // TODO: blink la led differemment si erreur? ou ne pas la blink? (probablement pas ne pas la blink)
                 syslog(LOG_INFO, "S1: increase frequency\n");
                 blink_power_led(led);
+
+                // check the mode
+                const char* mode = read_mode();
+                if (strncmp(mode, "auto", 4) == 0) {
+                    syslog(LOG_WARNING, "mode is manual, button ignored");
+                    continue;
+                }
+
                 // modify frequency on sysfs: read to know the value and increase
                 int freq = read_frequency();
                 if (freq == -1) {
@@ -214,6 +216,14 @@ int main(int argc, char* argv[])
             else if (ev[i].data.fd == k2) {
                 syslog(LOG_INFO, "S2: decrease frequency\n");
                 blink_power_led(led);
+
+                // check the mode
+                const char* mode = read_mode();
+                if (strncmp(mode, "auto", 4) == 0) {
+                    syslog(LOG_WARNING, "mode is manual, button ignored");
+                    continue;
+                }
+
                 // modify frequency on sysfs: read to know the value and decrease
                 int freq = read_frequency();
                 if (freq == -1) {
@@ -232,11 +242,14 @@ int main(int argc, char* argv[])
                 // modify mode on sysfs
                 int temp = read_cpu_temp();
                 syslog(LOG_INFO, "CPU temp: %d.%02d°C", temp / 1000, (temp / 10) % 100);
-                int mode_int = read_mode();
-                syslog(LOG_INFO, "Fan mode: %d", mode_int);
-                write_fan_mode(mode_int == 0 ? "manual" : "auto");   // toggle mode
-                mode_int = read_mode();
-                syslog(LOG_INFO, "Fan mode: %d", mode_int);
+                
+                const char* mode = read_mode();
+                if (mode == NULL) {
+                    syslog(LOG_ERR, "Unable to read mode");
+                    continue;
+                }
+                syslog(LOG_INFO, "Fan mode: %s", mode);
+                write_fan_mode(strncmp(mode, "auto", 4) == 0 ? "manual" : "auto");   // toggle mode
                 
                 syslog(LOG_INFO, "Fan freq: %d Hz", read_frequency());
             }
