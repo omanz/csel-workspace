@@ -12,6 +12,8 @@
 #include <sys/epoll.h>
 #include <syslog.h>
 
+#include "oled/ssd1306.h"
+
 /*
  * status led - gpioa.10 --> gpio10
  * power led  - gpiol.10 --> gpio362
@@ -156,38 +158,82 @@ static int write_fan_mode(const char *mode) {
     return 0;
 }
 
+static void initScreen(void) {
+    ssd1306_init();
+
+    ssd1306_set_position (0,0);
+    ssd1306_puts("CSEL1a - SP.07");
+    ssd1306_set_position (0,1);
+    ssd1306_puts("  Demo - SW");
+    ssd1306_set_position (0,2);
+    ssd1306_puts("--------------");
+}
+
 int main(int argc, char* argv[])
 {
     openlog("fanctl_daemon", LOG_PID, LOG_USER);
 
+    initScreen();
+
+    struct itimerspec t;
+    int timer_fd = timerfd_create(CLOCK_MONOTONIC, 0);
+
+    t.it_value.tv_sec = 1;
+    t.it_value.tv_nsec = 0;
+    t.it_interval.tv_sec = 1;
+    t.it_interval.tv_nsec = 0;
+    timerfd_settime(timer_fd, 0, &t, NULL);
+
     int epll_fd = epoll_create1(0);
-    struct epoll_event ev[3];
+    struct epoll_event ev[4];
+    ev[0].events = EPOLLIN;
+    ev[0].data.fd = timer_fd;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, timer_fd, &ev[0]);
 
     int led = open_led();
 
     // ecouter les fichiers pour savoir si il y a un appuis bouton
     int k1 = open_key(K1);
-    ev[0].events = EPOLLET; // edge triggered
-    ev[0].data.fd = k1;
-    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k1, &ev[0]);
+    ev[1].events = EPOLLET; // edge triggered
+    ev[1].data.fd = k1;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k1, &ev[1]);
 
     int k2 = open_key(K2);
-    ev[1].events = EPOLLET; // edge triggered
-    ev[1].data.fd = k2;
-    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k2, &ev[1]);
+    ev[2].events = EPOLLET; // edge triggered
+    ev[2].data.fd = k2;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k2, &ev[2]);
 
     int k3 = open_key(K3);
-    ev[2].events = EPOLLET; // edge triggered
-    ev[2].data.fd = k3;
-    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k3, &ev[2]);
+    ev[3].events = EPOLLET; // edge triggered
+    ev[3].data.fd = k3;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, k3, &ev[3]);
     
     syslog(LOG_INFO, "fanctl daemon started\n");
 
+    uint64_t exp;
     int nb_events = 0;
     while (1) {
-        nb_events = epoll_wait(epll_fd, ev, 3, -1);
+        nb_events = epoll_wait(epll_fd, ev, 4, -1);
         for (int i = 0; i < nb_events; i++) {
-            if (ev[i].data.fd == k1) {           
+            if (ev[i].data.fd == timer_fd) {
+                // read timer fd to clear event               
+                read(timer_fd, &exp, sizeof(uint64_t));
+                int temp = read_cpu_temp();
+                int freq = read_frequency();
+                const char* mode = read_mode();
+
+                char buf[32];
+                ssd1306_set_position (0,3);
+                snprintf(buf, sizeof(buf), "Temp: %d.%02dC", temp / 1000, (temp / 10) % 100);
+                ssd1306_puts(buf);
+                ssd1306_set_position (0,4);
+                snprintf(buf, sizeof(buf), "Freq: %d Hz", freq);
+                ssd1306_puts(buf);
+                ssd1306_set_position (0,5);
+                snprintf(buf, sizeof(buf), "Mode: %s", mode);
+                ssd1306_puts(buf);
+            }
+            else if (ev[i].data.fd == k1) {           
 
                 // TODO: blink la led differemment si erreur? ou ne pas la blink? (probablement pas ne pas la blink)
                 syslog(LOG_INFO, "S1: increase frequency\n");

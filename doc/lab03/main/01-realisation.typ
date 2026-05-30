@@ -72,6 +72,10 @@ Il charge le module et lance le daemon.
 
 TODO: Il sera installé dans /etc/init.d. Faire Makefile?
 
+=== Integration de l'écran
+Plusieurs questions se posent: taux de rafraichissement, comment gérer le timer...
+silly_led_control contenait deja un timer, on va le réutiliser.
+ 
 
 == Difficulté
 Lors de la création du deamon, nous avons par erreur exporté la led gpui10 plustot que la led de power.
