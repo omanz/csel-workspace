@@ -226,6 +226,10 @@ int main(int argc, char* argv[])
     ev[3].data.fd = k3;
     epoll_ctl(epll_fd, EPOLL_CTL_ADD, k3, &ev[3]);
     
+    // flush events after init
+    struct epoll_event dummy_ev[4];
+    epoll_wait(epll_fd, dummy_ev, 4, 0);  // timeout=0: non block, flush the queue
+
     syslog(LOG_INFO, "fanctl daemon started\n");
 
     uint64_t exp;
