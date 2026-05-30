@@ -145,11 +145,12 @@ static const char* read_mode(void)
     int f = open(SYSFS_FAN_MODE, O_RDONLY);
     if (f < 0) return NULL;
     
-    ssize_t r = read(f, val, sizeof(val)-1);    // remove the \n
+    ssize_t r = read(f, val, sizeof(val)-1);    // keep a place for terminator
     close(f);
     if (r <= 0) return NULL;
     
     val[r] = '\0';
+    val[strcspn(val, "\n")] = '\0'; // remove the \n in case of
     
     return val;
 }
@@ -263,7 +264,7 @@ int main(int argc, char* argv[])
 
                 // check the mode
                 const char* mode = read_mode();
-                if (strncmp(mode, "auto", 4) == 0) {
+                if (strcmp(mode, "auto") == 0) {
                     syslog(LOG_WARNING, "mode is manual, button ignored");
                     continue;
                 }
@@ -294,7 +295,7 @@ int main(int argc, char* argv[])
 
                 // check the mode
                 const char* mode = read_mode();
-                if (strncmp(mode, "auto", 4) == 0) {
+                if (strcmp(mode, "auto") == 0) {
                     syslog(LOG_WARNING, "mode is manual, button ignored");
                     continue;
                 }
@@ -329,7 +330,7 @@ int main(int argc, char* argv[])
                     continue;
                 }
                 const char* new_mode;
-                new_mode = strncmp(mode, "auto", 4) == 0 ? "manual" : "auto";
+                new_mode = strcmp(mode, "auto") == 0 ? "manual" : "auto";
                 write_fan_mode(new_mode);   // toggle mode
                 
                 // update screen
