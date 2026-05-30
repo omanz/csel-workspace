@@ -4,21 +4,23 @@
 #
 case "$1" in
   start)
+	insmod /workspace/src/07_miniproj/module/fanctl.ko
   	/workspace/src/07_miniproj/daemon/build/fanctl_daemon &
+	echo "fanctl_daemon application launched"
 	;;
   stop)
   	killall fanctl_daemon
+	rmmod fanctl
+	echo "fanctl_daemon application stopped"
 	;;
   restart|reload)
-  	killall fanctl_daemon
-	/workspace/src/07_miniproj/daemon/build/fanctl_daemon &
+    $0 stop
+    $0 start
 	;;
   *)
 	echo $"Usage: $0 {start|stop|restart}"
 	exit 1
 esac
-
-echo "fanctl_daemon application launched"
 
 exit $?
 
