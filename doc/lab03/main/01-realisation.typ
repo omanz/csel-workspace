@@ -86,6 +86,9 @@ Pour éviter d'avoir un délai de 1 seconde sur l'affichage de la nouvelle fréq
 == Frequence
 Lorsque on change de mode pour passer de auto à manual, la dernière fréquence utilisée en manuelle reste active. Cela semble cohérent si il s'agissait de controler un moteur, et cela évite de gérer une mémoire quand à la dernière fréquence utilisée en mode manuel.
 
+== Questionnement
+- Est ce que on ajoute un délai en auto si on est entre 2 température pour éviter que la fréquence change trop souvent? Ce serai à faire dans le module.
+
 
 == Difficulté
 Lors de la création du deamon, nous avons par erreur exporté la led gpui10 plustot que la led de power.
