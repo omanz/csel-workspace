@@ -66,8 +66,10 @@ Nous décidons de donner plus de liberté en fesant des pas de 1 pour chaque fr�
 
 question: taux de rafraichissement de l'écran?
 
+== Script
+Nous créons un script en nous inspirant de /workspace/src/01_environment/daemon/S60_appl, que nous nommons `S60fanctl` qui permets de relancer le deamon lors de nos nombreux tests.
+TODO: Il sera installé dans /etc/init.d. Faire Makefile?
 
-TODO: script pour lancer le deamon parce que chier de faire des ps -aux et des kill pour relancer
 
 == Difficulté
 Lors de la création du deamon, nous avons par erreur exporté la led gpui10 plustot que la led de power.

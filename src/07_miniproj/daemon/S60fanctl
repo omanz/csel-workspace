@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# Fanctl application
+#
+case "$1" in
+  start)
+  	/workspace/src/07_miniproj/daemon/build/fanctl_daemon &
+	;;
+  stop)
+  	killall fanctl_daemon
+	;;
+  restart|reload)
+  	killall fanctl_daemon
+	/workspace/src/07_miniproj/daemon/build/fanctl_daemon &
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+echo "fanctl_daemon application launched"
+
+exit $?
+
