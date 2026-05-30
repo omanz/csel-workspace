@@ -75,7 +75,17 @@ TODO: Il sera installé dans /etc/init.d. Faire Makefile?
 === Integration de l'écran
 Plusieurs questions se posent: taux de rafraichissement, comment gérer le timer...
 silly_led_control contenait deja un timer, on va le réutiliser.
- 
+L'ecran fonctionne de telle sorte que on peut mettre a jour uniquement les lignes qui changent.
+
+On choisi donc de mettre a jour la température toute les secondes, et on en profite pour mettre à jour la fréquence et le mode au cas où ils auraient changés (un restart du module?).
+la fréquence est mise à jour également si elle est modifiée lors de l'appui sur un bouton.
+le mode est mis à jour lors de l'appui sur le bouton toggle.
+
+Pour éviter d'avoir un délai de 1 seconde sur l'affichage de la nouvelle fréquence lorsqu'on passe de manual à auto, on relis la fréquence une fois que on a changé de mode.
+
+== Frequence
+Lorsque on change de mode pour passer de auto à manual, la dernière fréquence utilisée en manuelle reste active. Cela semble cohérent si il s'agissait de controler un moteur, et cela évite de gérer une mémoire quand à la dernière fréquence utilisée en mode manuel.
+
 
 == Difficulté
 Lors de la création du deamon, nous avons par erreur exporté la led gpui10 plustot que la led de power.

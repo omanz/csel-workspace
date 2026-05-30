@@ -145,8 +145,11 @@ static const char* read_mode(void)
     int f = open(SYSFS_FAN_MODE, O_RDONLY);
     if (f < 0) return NULL;
     
-    read(f, val, sizeof(val));
+    ssize_t r = read(f, val, sizeof(val)-1);    // remove the \n
     close(f);
+    if (r <= 0) return NULL;
+    
+    val[r] = '\0';
     
     return val;
 }
@@ -167,6 +170,21 @@ static void initScreen(void) {
     ssd1306_puts("  Demo - SW");
     ssd1306_set_position (0,2);
     ssd1306_puts("--------------");
+
+    int temp = read_cpu_temp();
+    int freq = read_frequency();
+    const char* mode = read_mode();
+
+    char buf[32];
+    ssd1306_set_position (0,3);
+    snprintf(buf, sizeof(buf), "Temp: %d.%02dC", temp / 1000, (temp / 10) % 100);
+    ssd1306_puts(buf);
+    ssd1306_set_position (0,4);
+    snprintf(buf, sizeof(buf), "Freq: %2d Hz", freq);
+    ssd1306_puts(buf);
+    ssd1306_set_position (0,5);
+    snprintf(buf, sizeof(buf), "Mode: %-6s", mode);
+    ssd1306_puts(buf);
 }
 
 int main(int argc, char* argv[])
@@ -221,16 +239,16 @@ int main(int argc, char* argv[])
                 int temp = read_cpu_temp();
                 int freq = read_frequency();
                 const char* mode = read_mode();
-
+                
                 char buf[32];
                 ssd1306_set_position (0,3);
                 snprintf(buf, sizeof(buf), "Temp: %d.%02dC", temp / 1000, (temp / 10) % 100);
                 ssd1306_puts(buf);
                 ssd1306_set_position (0,4);
-                snprintf(buf, sizeof(buf), "Freq: %d Hz", freq);
+                snprintf(buf, sizeof(buf), "Freq: %2d Hz", freq);
                 ssd1306_puts(buf);
                 ssd1306_set_position (0,5);
-                snprintf(buf, sizeof(buf), "Mode: %s", mode);
+                snprintf(buf, sizeof(buf), "Mode: %-6s", mode);
                 ssd1306_puts(buf);
             }
             else if (ev[i].data.fd == k1) {           
@@ -256,8 +274,15 @@ int main(int argc, char* argv[])
                     syslog(LOG_INFO, "frequency already at max (%d Hz)", FREQ_MAX);
                     continue;
                 }
-                syslog(LOG_INFO, "S2: frequency increased from %d Hz to %d Hz\n", freq, freq+1 );
-                write_fan_freq(freq + 1);
+                int new_freq = freq+1;
+                syslog(LOG_INFO, "S2: frequency increased from %d Hz to %d Hz\n", freq, new_freq );
+                write_fan_freq(new_freq);
+
+                // update screen
+                char buf[32];
+                ssd1306_set_position (0,4);
+                snprintf(buf, sizeof(buf), "Freq: %2d Hz", new_freq);
+                ssd1306_puts(buf);
             }
             else if (ev[i].data.fd == k2) {
                 syslog(LOG_INFO, "S2: decrease frequency\n");
@@ -280,24 +305,40 @@ int main(int argc, char* argv[])
                     syslog(LOG_INFO, "frequency already at min (%d Hz)", FREQ_MIN);
                     continue;
                 }
-                syslog(LOG_INFO, "S2: frequency decreased from %d Hz to %d Hz\n", freq, freq-1 );
-                write_fan_freq(freq - 1);
+                int new_freq = freq-1;
+                syslog(LOG_INFO, "S2: frequency decreased from %d Hz to %d Hz\n", freq, new_freq );
+                write_fan_freq(new_freq);
+
+                // update screen
+                char buf[32];
+                ssd1306_set_position (0,4);
+                snprintf(buf, sizeof(buf), "Freq: %2d Hz", new_freq);
+                ssd1306_puts(buf);
+
             }
             else if (ev[i].data.fd == k3) {
                 syslog(LOG_INFO, "toggle mode\n");
                 // modify mode on sysfs
-                int temp = read_cpu_temp();
-                syslog(LOG_INFO, "CPU temp: %d.%02d°C", temp / 1000, (temp / 10) % 100);
-                
                 const char* mode = read_mode();
                 if (mode == NULL) {
                     syslog(LOG_ERR, "Unable to read mode");
                     continue;
                 }
-                syslog(LOG_INFO, "Fan mode: %s", mode);
-                write_fan_mode(strncmp(mode, "auto", 4) == 0 ? "manual" : "auto");   // toggle mode
+                const char* new_mode;
+                new_mode = strncmp(mode, "auto", 4) == 0 ? "manual" : "auto";
+                write_fan_mode(new_mode);   // toggle mode
                 
-                syslog(LOG_INFO, "Fan freq: %d Hz", read_frequency());
+                // update screen
+                char buf[32];
+                ssd1306_set_position (0,5);
+                snprintf(buf, sizeof(buf), "Mode: %-6s", new_mode);
+                ssd1306_puts(buf);
+                // update freq in case of
+                int freq = read_frequency();
+                ssd1306_set_position (0,4);
+                snprintf(buf, sizeof(buf), "Freq: %2d Hz", freq);
+                ssd1306_puts(buf);
+
             }
         }
     }
