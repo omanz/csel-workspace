@@ -403,11 +403,17 @@ int main(int argc, char* argv[])
                     }
 
                 } else if (strncmp(cmd, "freq ", 5) == 0) {
-                    int freq = atoi(cmd + 5);
-                    if (write_fan_freq(freq) == 0)
-                        snprintf(resp, sizeof(resp), "freq %d Hz", freq);
-                    else
-                        snprintf(resp, sizeof(resp), "error: invalid frequency");
+                    const char* mode = read_mode();
+                    if (strcmp(mode, "manual") == 0) 
+                    {
+                        int freq = atoi(cmd + 5);
+                        if (write_fan_freq(freq) == 0)
+                            snprintf(resp, sizeof(resp), "freq %d Hz", freq);
+                        else
+                            snprintf(resp, sizeof(resp), "error: invalid frequency");
+                    } else {
+                        snprintf(resp, sizeof(resp), "error: mode not manual");
+                    }
 
                 } else {
                     snprintf(resp, sizeof(resp), "error: unknown command");
