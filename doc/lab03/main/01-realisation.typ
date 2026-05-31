@@ -139,8 +139,23 @@ Pour éviter d'avoir un délai de 1 seconde sur l'affichage de la nouvelle fréq
 == Frequence
 Lorsque on change de mode pour passer de auto à manual, la dernière fréquence utilisée en manuelle reste active. Cela semble cohérent si il s'agissait de controler un moteur, et cela évite de gérer une mémoire quand à la dernière fréquence utilisée en mode manuel.
 
+=== Application pour l'interface utilisateur
+L'application fournis une interface utilisateur, une ligne de commande, pour piloter le système via l’interface IPC choisie.
+
+==== Interface IPC - Inter-Process Communication
+Nous avons plusieurs choix pour réaliser l'IPC:
+- FIFO: simple à implémenter mais unidirectionnel. Le deamon ne pourra pas répondre à la CLI pour confirmer le message, ou alors il faudra 2 FIFO.
+- Pipe: nécessite un fork et nous aimerions que nos 2 processus soient indépendant.
+- Message Queue: plus complexe qu'un fifo, mais bidirectionnel. La taille ainsi que le nombre de message doit être détérminé à la création.
+- Socket: bidirectionnel mais plus complexe. 
+
+Dans le cadre des anciens laboratoires, nous avons réalisé un socket-pair. Nous allons tester ici une implémentation avec FIFO. Afin de pouvoir envoyer mais aussi recevoir des information, nous créons 2 FIFO: `/tmp/fanctl_cmd.fifo` et `/tmp/fanctl_resp.fifo`.
+Les droits sur ces fichiers sont en read et write pour tous.
+
+
 == Questionnement
 - Est ce que on ajoute un délai en auto si on est entre 2 température pour éviter que la fréquence change trop souvent? Ce serai à faire dans le module.
+
 
 
 == Difficulté

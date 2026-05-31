@@ -29,6 +29,10 @@
 #define SYSFS_FAN_FREQ   "/sys/class/fanctl/fanctl/frequency"
 #define SYSFS_FAN_MODE   "/sys/class/fanctl/fanctl/mode"
 
+// IPC
+#define FIFO_CMD      "/tmp/fanctl_cmd.fifo"
+#define FIFO_RESPONSE "/tmp/fanctl_resp.fifo"
+
 #define FREQ_MIN    1
 #define FREQ_MAX    20
 
@@ -188,6 +192,21 @@ static void initScreen(void) {
     ssd1306_puts(buf);
 }
 
+static const char* toggle_mode() 
+{
+    syslog(LOG_INFO, "toggle mode\n");
+    // modify mode on sysfs
+    const char* mode = read_mode();
+    if (mode == NULL) {
+        syslog(LOG_ERR, "Unable to read mode");
+        return NULL;
+    }
+    const char* new_mode;
+    new_mode = strcmp(mode, "auto") == 0 ? "manual" : "auto";
+    write_fan_mode(new_mode);   // toggle mode
+    return new_mode;
+}
+
 int main(int argc, char* argv[])
 {
     openlog("fanctl_daemon", LOG_PID, LOG_USER);
@@ -203,8 +222,12 @@ int main(int argc, char* argv[])
     t.it_interval.tv_nsec = 0;
     timerfd_settime(timer_fd, 0, &t, NULL);
 
+    // IPC
+    mkfifo(FIFO_CMD, 0666); // rw for all
+    mkfifo(FIFO_RESPONSE, 0666);
+
     int epll_fd = epoll_create1(0);
-    struct epoll_event ev[4];
+    struct epoll_event ev[5];
     ev[0].events = EPOLLIN;
     ev[0].data.fd = timer_fd;
     epoll_ctl(epll_fd, EPOLL_CTL_ADD, timer_fd, &ev[0]);
@@ -227,16 +250,21 @@ int main(int argc, char* argv[])
     ev[3].data.fd = k3;
     epoll_ctl(epll_fd, EPOLL_CTL_ADD, k3, &ev[3]);
     
+    int fifo_fd = open(FIFO_CMD, O_RDONLY | O_NONBLOCK);
+    ev[4].events = EPOLLIN; // listen
+    ev[4].data.fd = fifo_fd;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, fifo_fd, &ev[4]);
+
     // flush events after init
-    struct epoll_event dummy_ev[4];
-    epoll_wait(epll_fd, dummy_ev, 4, 0);  // timeout=0: non block, flush the queue
+    struct epoll_event dummy_ev[5];
+    epoll_wait(epll_fd, dummy_ev, 5, 0);  // timeout=0: non block, flush the queue
 
     syslog(LOG_INFO, "fanctl daemon started\n");
 
     uint64_t exp;
     int nb_events = 0;
     while (1) {
-        nb_events = epoll_wait(epll_fd, ev, 4, -1);
+        nb_events = epoll_wait(epll_fd, ev, 5, -1);
         for (int i = 0; i < nb_events; i++) {
             if (ev[i].data.fd == timer_fd) {
                 // read timer fd to clear event               
@@ -322,16 +350,12 @@ int main(int argc, char* argv[])
 
             }
             else if (ev[i].data.fd == k3) {
-                syslog(LOG_INFO, "toggle mode\n");
-                // modify mode on sysfs
-                const char* mode = read_mode();
-                if (mode == NULL) {
-                    syslog(LOG_ERR, "Unable to read mode");
+                const char* new_mode;
+                new_mode = toggle_mode();
+                if (new_mode == NULL) {
+                    syslog(LOG_ERR, "Unable to toggle mode");
                     continue;
                 }
-                const char* new_mode;
-                new_mode = strcmp(mode, "auto") == 0 ? "manual" : "auto";
-                write_fan_mode(new_mode);   // toggle mode
                 
                 // update screen
                 char buf[32];
@@ -344,6 +368,50 @@ int main(int argc, char* argv[])
                 snprintf(buf, sizeof(buf), "Freq: %2d Hz", freq);
                 ssd1306_puts(buf);
 
+            }
+            else if (ev[i].data.fd == fifo_fd) {
+                syslog(LOG_INFO, "message received\n");
+                
+                char cmd[32] = {0};
+                char resp[64] = {0};
+                
+                read(fifo_fd, cmd, sizeof(cmd) - 1);
+                cmd[strcspn(cmd, "\n")] = '\0';
+
+                if (strcmp(cmd, "status") == 0) {
+                    int temp = read_cpu_temp();
+                    int freq = read_frequency();
+                    const char* mode = read_mode();
+                    snprintf(resp, sizeof(resp), "temp:%d.%02d mode:%s freq:%d",
+                        temp / 1000, (temp / 10) % 100, mode, freq);
+
+                } else if (strcmp(cmd, "mode toggle") == 0) {
+                    const char* new_mode;
+                    new_mode = toggle_mode();
+                    if (new_mode == NULL) {
+                        syslog(LOG_ERR, "Unable to toggle mode");
+                        snprintf(resp, sizeof(resp), "error: mode toggle impossible");
+                    } else {
+                    snprintf(resp, sizeof(resp), "mode toggle ok");
+                    }
+
+                } else if (strncmp(cmd, "freq ", 5) == 0) {
+                    int freq = atoi(cmd + 5);
+                    if (write_fan_freq(freq) == 0)
+                        snprintf(resp, sizeof(resp), "freq ok");
+                    else
+                        snprintf(resp, sizeof(resp), "error: invalid frequency");
+
+                } else {
+                    snprintf(resp, sizeof(resp), "error: unknown command");
+                }
+
+                // send response
+                int resp_fd = open(FIFO_RESPONSE, O_WRONLY | O_NONBLOCK);
+                if (resp_fd >= 0) {
+                    write(resp_fd, resp, strlen(resp));
+                    close(resp_fd);
+                }
             }
         }
     }
