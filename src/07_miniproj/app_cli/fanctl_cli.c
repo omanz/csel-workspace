@@ -3,9 +3,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
-#define FIFO_CMD      "/tmp/fanctl_cmd.fifo"
-#define FIFO_RESPONSE "/tmp/fanctl_resp.fifo"
+#define SOCKET_PATH "/tmp/fanctl.sock"
 
 int main(int argc, char* argv[])
 {
@@ -16,24 +17,14 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // open response file
-    int resp_fd = open(FIFO_RESPONSE, O_RDONLY | O_NONBLOCK);
-    if (resp_fd < 0) {
-        perror("failed to open response FIFO");
-        return 1;
-    }
+    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    struct sockaddr_un addr = {
+        .sun_family = AF_UNIX,
+    };
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
 
-    // flush response file
-    char flush_buf[256];
-    ssize_t r;
-    do {
-        r = read(resp_fd, flush_buf, sizeof(flush_buf));
-    } while (r > 0);
-
-    // open command file
-    int cmd_fd = open(FIFO_CMD, O_WRONLY);
-    if (cmd_fd < 0) {
-        perror("failed to open command FIFO");
+    if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        perror("failed to connect");
         return 1;
     }
 
@@ -43,15 +34,12 @@ int main(int argc, char* argv[])
     else
         snprintf(cmd, sizeof(cmd), "%s", argv[1]);
 
-    write(cmd_fd, cmd, strlen(cmd));
-    close(cmd_fd);
-
-    // attendre et lire la réponse
-    usleep(100000);  // 100ms
+    write(sock, cmd, strlen(cmd));
+   
     char resp[64] = {0};
-    read(resp_fd, resp, sizeof(resp) - 1);
+    read(sock, resp, sizeof(resp) - 1);
     printf("%s\n", resp);
-    close(resp_fd);
+    close(sock);
 
     return 0;
 }

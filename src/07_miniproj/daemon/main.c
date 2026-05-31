@@ -4,6 +4,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -30,8 +32,7 @@
 #define SYSFS_FAN_MODE   "/sys/class/fanctl/fanctl/mode"
 
 // IPC
-#define FIFO_CMD      "/tmp/fanctl_cmd.fifo"
-#define FIFO_RESPONSE "/tmp/fanctl_resp.fifo"
+#define SOCKET_PATH "/tmp/fanctl.sock"
 
 #define FREQ_MIN    1
 #define FREQ_MAX    20
@@ -223,8 +224,13 @@ int main(int argc, char* argv[])
     timerfd_settime(timer_fd, 0, &t, NULL);
 
     // IPC
-    mkfifo(FIFO_CMD, 0666); // rw for all
-    mkfifo(FIFO_RESPONSE, 0666);
+    int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    struct sockaddr_un addr = {
+        .sun_family = AF_UNIX,
+    };
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+    bind(sock_fd, (struct sockaddr*)&addr, sizeof(addr));
+    listen(sock_fd, 5);
 
     int epll_fd = epoll_create1(0);
     struct epoll_event ev[5];
@@ -250,10 +256,9 @@ int main(int argc, char* argv[])
     ev[3].data.fd = k3;
     epoll_ctl(epll_fd, EPOLL_CTL_ADD, k3, &ev[3]);
     
-    int fifo_fd = open(FIFO_CMD, O_RDONLY | O_NONBLOCK);
     ev[4].events = EPOLLIN; // listen
-    ev[4].data.fd = fifo_fd;
-    epoll_ctl(epll_fd, EPOLL_CTL_ADD, fifo_fd, &ev[4]);
+    ev[4].data.fd = sock_fd;
+    epoll_ctl(epll_fd, EPOLL_CTL_ADD, sock_fd, &ev[4]);
 
     // flush events after init
     struct epoll_event dummy_ev[5];
@@ -350,8 +355,7 @@ int main(int argc, char* argv[])
 
             }
             else if (ev[i].data.fd == k3) {
-                const char* new_mode;
-                new_mode = toggle_mode();
+                const char* new_mode = toggle_mode();
                 if (new_mode == NULL) {
                     syslog(LOG_ERR, "Unable to toggle mode");
                     continue;
@@ -369,14 +373,17 @@ int main(int argc, char* argv[])
                 ssd1306_puts(buf);
 
             }
-            else if (ev[i].data.fd == fifo_fd) {
-                syslog(LOG_INFO, "message received\n");
+            else if (ev[i].data.fd == sock_fd) {
+                int client_fd = accept(sock_fd, NULL, NULL);
+                if (client_fd < 0) continue;
                 
                 char cmd[32] = {0};
                 char resp[64] = {0};
                 
-                read(fifo_fd, cmd, sizeof(cmd) - 1);
+                read(client_fd, cmd, sizeof(cmd) - 1);
                 cmd[strcspn(cmd, "\n")] = '\0';
+
+                syslog(LOG_INFO, "IPC command: %s", cmd);
 
                 if (strcmp(cmd, "status") == 0) {
                     int temp = read_cpu_temp();
@@ -386,8 +393,7 @@ int main(int argc, char* argv[])
                         temp / 1000, (temp / 10) % 100, mode, freq);
 
                 } else if (strcmp(cmd, "mode toggle") == 0) {
-                    const char* new_mode;
-                    new_mode = toggle_mode();
+                    const char* new_mode = toggle_mode();
                     if (new_mode == NULL) {
                         syslog(LOG_ERR, "Unable to toggle mode");
                         snprintf(resp, sizeof(resp), "error: mode toggle impossible");
@@ -407,11 +413,8 @@ int main(int argc, char* argv[])
                 }
 
                 // send response
-                int resp_fd = open(FIFO_RESPONSE, O_WRONLY | O_NONBLOCK);
-                if (resp_fd >= 0) {
-                    write(resp_fd, resp, strlen(resp));
-                    close(resp_fd);
-                }
+                write(client_fd, resp, strlen(resp));
+                close(client_fd);
             }
         }
     }

@@ -152,6 +152,13 @@ Nous avons plusieurs choix pour réaliser l'IPC:
 Dans le cadre des anciens laboratoires, nous avons réalisé un socket-pair. Nous allons tester ici une implémentation avec FIFO. Afin de pouvoir envoyer mais aussi recevoir des information, nous créons 2 FIFO: `/tmp/fanctl_cmd.fifo` et `/tmp/fanctl_resp.fifo`.
 Les droits sur ces fichiers sont en read et write pour tous.
 
+==== Changement IPC
+Le problème que nous rencontrons avec les FIFO est le flush des buffers.
+Puisque nous sommes parti sur la volonté d'avoir une communication bidirectionnelle, il nous est difficile de gérer et nettoyer 2 fichiers entre les communications.
+Nous nous retrouvons avec des messages dupliqués, des boucles pour nettoyer, etc. Ce n'est pas idéal.
+Nous repartons donc sur les sockets heureusement, une bonne partie du code peut être réutilisé.
+
+
 
 == Questionnement
 - Est ce que on ajoute un délai en auto si on est entre 2 température pour éviter que la fréquence change trop souvent? Ce serai à faire dans le module.
