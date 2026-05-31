@@ -1,16 +1,14 @@
 #import "../metadata.typ": *
 #pagebreak()
 
-= Mini Projet - Programmation noyau et système
-
-== Résumé du laboratoire 
+= Résumé du laboratoire 
 Ce projet est une application permettant de simuler la gestion de la vitesse de rotation d’un ventilateur en fonction de la température du processeur.
 
-== Description de l'application
+= Description de l'application
 
 L'application est composée de trois parties principales : un module noyau, un daemon userspace et une application qui fourni une interface utilisateur en ligne de commande.
 
-=== Module noyau (`fanctl.ko`)
+== Module noyau (`fanctl.ko`)
 Le module noyau gère la LED status (gpio10) et expose deux attributs via sysfs :
 - `/sys/class/fanctl/fanctl/frequency` : fréquence de clignotement de la LED, de 1 à 20 Hz
 - `/sys/class/fanctl/fanctl/mode` : mode de fonctionnement (`auto` ou `manual`)
@@ -23,7 +21,7 @@ En mode *auto*, la fréquence est déterminée par la température du CPU :
 
 En mode *manual*, la fréquence est fixée par l'utilisateur via les boutons ou l'interface IPC.
 
-=== Daemon userspace (`fanctl_daemon`)
+== Daemon userspace (`fanctl_daemon`)
 Le daemon gère :
 - La LED power (gpio362): clignote lors de chaque appui bouton
 - Les boutons S1, S2, S3 via interruptions GPIO
@@ -36,7 +34,7 @@ L'écran OLED affiche en temps réel :
 - La fréquence de clignotement de la LED status
 - Le mode actuel (auto / manual)
 
-=== Boutons
+== Boutons
 #table(
   columns: (auto, 1fr),
   [*Bouton*], [*Action*],
@@ -47,7 +45,7 @@ L'écran OLED affiche en temps réel :
 
 En mode auto, les boutons S1 et S2 sont ignorés.
 
-=== Application CLI (`fanctl_cli`)
+== Application CLI (`fanctl_cli`)
 L'application CLI permet de piloter le daemon via un socket Unix (`/tmp/fanctl.sock`).
 
 #table(
@@ -60,22 +58,32 @@ L'application CLI permet de piloter le daemon via un socket Unix (`/tmp/fanctl.s
 
 Le daemon traite chaque connexion de manière indépendante : il lit la commande, l'exécute et retourne immédiatement une réponse avant de fermer la connexion.
 
-== Installation
+= Installation et lancement
 
-=== Prérequis
-- Le device tree OLED doit être installé sur la cible
-- le workspace doit être disponible
+== Prérequis
+- Le device tree OLED doit être installé sur la cible et la carte redémarrée
+- Le rootfs de la cible doit être synchronisé via CIFS sur le host sous `/rootfs/`
 
-=== Compilation
-TODO: faire un makefile global
-TODO: installer sur la cible avec un make install plutot que d'utiliser le workspace?
+== Compilation et installation
+Depuis le host, à la racine du projet :
+`make install`
 
-=== Lancement manuel
-`/workspace/src/07_miniproj/daemon/S60fanctl start`
+Cette commande compile tous les composants et les installe sur la cible :
+- Module noyau: `/usr/lib/fanctl.ko`
+- Daemon: `/usr/bin/fanctl_daemon`
+- Application CLI: `/usr/bin/fanctl_cli`
+- Script de lancement: `/etc/init.d/S60fanctl`
 
-== Travail réalisé
-=== Ecran
-Nous commencons par tester l'écran. Pour ce faire, nous compilons le projet founi a disposition et remplacons le dts sur la cible:
+== Lancement automatique
+Le script `S60fanctl` est installé dans `/etc/init.d/` et est exécuté automatiquement au démarrage de la carte. Le module est chargé puis le daemon est lancé en arrière-plan.
+
+== Logs
+Les logs du module sont disponibles avec la commande `dmesg`.
+Les logs du daemon sont disponibles avec la commande `tail -f /var/log/messages`
+
+= Travail réalisé
+== Installation du device tree
+Nous compilons le projet `oled` founi et remplacons le dts sur la cible:
 ```
 mount /dev/mmcblk2p1 /mnt/boot
 ls /mnt/boot/
@@ -89,9 +97,9 @@ Une fois redemaré, nous testons la présence du endpoint:
 # ls /dev/i2c-*
 /dev/i2c-0
 ```
-Puis nous tetons avec succès le programme de test `/workspace/src/07_miniproj/oled/oled`. Le texte attendu s'affiche à l'ecran.
+Nous testons avec succès le programme de demo `/workspace/src/07_miniproj/oled/oled`. Le texte attendu s'affiche à l'ecran.
 
-=== Module noyau
+== Module noyau
 Nous allons commencer par créer un module noyau qui fait clignoter la LED Status (gpio10) à une fréquence fixe.
 Nous installons manuellement le module pour vérifier son bon fonctionnement avec la commande `insmod`.
 
@@ -101,7 +109,7 @@ Le mode est atteignable via `/sys/class/fanctl/fanctl/mode` et prend les valeurs
 
 La lecture de la température peut être testée via `cat /sys/class/thermal/thermal_zone0/temp`.
 
-Le module gère la led status (gpiol.10 --> gpio10 selon silly_led_control.c))
+Le module gère la led status (gpiol.10 --> gpio10 selon `silly_led_control.c`))
 
 === Deamon en espace utilisateur
 Le daemon userspace doit :
@@ -109,15 +117,15 @@ Le daemon userspace doit :
 - Écrire dans le sysfs pour changer mode/fréquence
 - Afficher sur l'écran OLED : mode, température, fréquence
 
-Le deamon gère la led Power (gpiol.10 --> gpio362 selon silly_led_control.c))
-Je me base sur le fichier /workspace/src/04_system/silly/silly_led_control.c qui gère deja une led et des boutons.
+Le deamon gère la led Power (gpiol.10 --> gpio362 selon `silly_led_control.c`))
+Je me base sur le fichier `/workspace/src/04_system/silly/silly_led_control.c` qui gère deja une led et des boutons.
 Je veux voir mes logs avec `tail -f /var/log/messages`
 Prochaine étape:
 blink de la led lors de l'appui sur un bouton
 
 
 Prochaine étape, aller communiquer avec le module noyau via sysfs pour lire la température par exemple
-La lecture de la temperature a déjà été faite dans 01_environement/system_calls/syscall.c
+La lecture de la temperature a déjà été faite dans `01_environement/system_calls/syscall.c`
 On s'en inspire pour lire la température. Celle-ci devra être lue périodiquement à l'aide d'un timer pour l'affichage sur l'écran
 
 Dans la lancée, on continue avec la lecture des sysfs exportés par notre module.
@@ -127,15 +135,9 @@ Or on lis du sysfs une string, que on converti en int. On fesait l'inverse dans 
 
 Nous passons un certain temps à soigner les réponses en cas de mauvaise commande (par exemple essayer de modifier la fréquence alors que le mode n'est pas en manual, renvoyer le mode en cas de mode toggle, etc)
 
-== Script
-Nous créons un script en nous inspirant de /workspace/src/01_environment/daemon/S60_appl, que nous nommons `S60fanctl` qui permets de relancer le deamon lors de nos nombreux tests.
-Il charge le module et lance le daemon.
-
-TODO: Il sera installé dans /etc/init.d. Faire Makefile?
-
 === Integration de l'écran
 Plusieurs questions se posent: taux de rafraichissement, comment gérer le timer...
-silly_led_control contenait deja un timer, on va le réutiliser.
+`silly_led_control` contenait deja un timer, on va le réutiliser.
 L'ecran fonctionne de telle sorte que on peut mettre a jour uniquement les lignes qui changent.
 
 On choisi donc de mettre a jour la température toute les secondes, et on en profite pour mettre à jour la fréquence et le mode au cas où ils auraient changés (un restart du module?).

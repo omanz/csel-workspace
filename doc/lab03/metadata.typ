@@ -19,7 +19,7 @@
   }
   sum
 }
-#let seed = hash-text(str("https://mse-csel.github.io/website/assignments/programmation-systeme/fichiers/"))
+#let seed = hash-text(str("https://mse-csel.github.io/website/assignments/mini-projet/"))
 
 #let iterations = 10 + calc.rem(seed, 5)        // [10;14]
 #let step = 3 + calc.rem(seed, 4)               // [3;6]
@@ -37,10 +37,10 @@
 // Metadata of the document
 //
 #let doc= (
-  title    : [*Programmation système Linux et Optimisation système Linux*],
+  title    : [*Mini Projet - Programmation noyau et système*],
   abbr     : "MA_CSEL",
   subtitle : none,
-  url      : "https://mse-csel.github.io/website/assignments/programmation-systeme/fichiers/",
+  url      : "https://mse-csel.github.io/website/assignments/mini-projet/",
   github   : "https://github.com/omanz/csel-workspace",
   location : "Fribourg",
 
