@@ -224,6 +224,7 @@ int main(int argc, char* argv[])
     timerfd_settime(timer_fd, 0, &t, NULL);
 
     // IPC
+    unlink(SOCKET_PATH);    // remove if exists
     int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     struct sockaddr_un addr = {
         .sun_family = AF_UNIX,
@@ -398,13 +399,13 @@ int main(int argc, char* argv[])
                         syslog(LOG_ERR, "Unable to toggle mode");
                         snprintf(resp, sizeof(resp), "error: mode toggle impossible");
                     } else {
-                    snprintf(resp, sizeof(resp), "mode toggle ok");
+                    snprintf(resp, sizeof(resp), "mode %s", new_mode);
                     }
 
                 } else if (strncmp(cmd, "freq ", 5) == 0) {
                     int freq = atoi(cmd + 5);
                     if (write_fan_freq(freq) == 0)
-                        snprintf(resp, sizeof(resp), "freq ok");
+                        snprintf(resp, sizeof(resp), "freq %d Hz", freq);
                     else
                         snprintf(resp, sizeof(resp), "error: invalid frequency");
 
