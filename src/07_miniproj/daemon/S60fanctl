@@ -4,8 +4,8 @@
 #
 case "$1" in
   start)
-	insmod /workspace/src/07_miniproj/module/fanctl.ko
-  	/workspace/src/07_miniproj/daemon/build/fanctl_daemon &
+	insmod /usr/lib/fanctl.ko
+  	/usr/bin/fanctl_daemon &
 	echo "fanctl_daemon application launched"
 	;;
   stop)

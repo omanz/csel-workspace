@@ -125,13 +125,6 @@ Dans la lancée, on continue avec la lecture des sysfs exportés par notre modul
 On se rend compte qu'il est plus aisé de retourner des int plutot que des char pour les comparaisons.
 Or on lis du sysfs une string, que on converti en int. On fesait l'inverse dans le module ce qui double le travail. Mais on maintient cette manière de faire car il nous semble plus "user friendly" de retourner une string comprehensible en interrogeant le sysfs que un numero qu'il faut interpréter.
 
-== Frequence
-Dans le mode "auto", la fréquence peut prendre les valeurs de 2Hz, 5Hz, 10Hz ou 20Hz
-Or, rien n'est indiqué pour le mode manuel.
-Nous décidons de donner plus de liberté en fesant des pas de 1 pour chaque fréquence avec comme frequence minimale 1Hz et comme frequence maximale 20Hz (c'est ce qui est deja défini dans notre module)
-
-
-question: taux de rafraichissement de l'écran?
 
 == Script
 Nous créons un script en nous inspirant de /workspace/src/01_environment/daemon/S60_appl, que nous nommons `S60fanctl` qui permets de relancer le deamon lors de nos nombreux tests.
@@ -150,33 +143,33 @@ le mode est mis à jour lors de l'appui sur le bouton toggle.
 
 Pour éviter d'avoir un délai de 1 seconde sur l'affichage de la nouvelle fréquence lorsqu'on passe de manual à auto, on relis la fréquence une fois que on a changé de mode.
 
+=== Choix d'implémentation
 == Frequence
+Dans le mode "auto", la fréquence peut prendre les valeurs de 2Hz, 5Hz, 10Hz ou 20Hz
+Or, rien n'est indiqué pour le mode manuel.
+Nous décidons de donner plus de liberté en fesant des pas de 1 pour chaque fréquence avec comme frequence minimale 1Hz et comme frequence maximale 20Hz (c'est ce qui est deja défini dans notre module)
+
 Lorsque on change de mode pour passer de auto à manual, la dernière fréquence utilisée en manuelle reste active. Cela semble cohérent si il s'agissait de controler un moteur, et cela évite de gérer une mémoire quand à la dernière fréquence utilisée en mode manuel.
 
-=== Application pour l'interface utilisateur
-L'application fournis une interface utilisateur, une ligne de commande, pour piloter le système via l’interface IPC choisie.
+=== Integration de l'écran
+Plusieurs questions se posent: taux de rafraichissement, comment gérer le timer...
+`silly_led_control` contenait deja un timer, on va le réutiliser.
+L'ecran fonctionne de telle sorte que on peut mettre à jour uniquement les lignes qui changent.
 
-==== Interface IPC - Inter-Process Communication
-Nous avons plusieurs choix pour réaliser l'IPC:
-- FIFO: simple à implémenter mais unidirectionnel. Le deamon ne pourra pas répondre à la CLI pour confirmer le message, ou alors il faudra 2 FIFO.
-- Pipe: nécessite un fork et nous aimerions que nos 2 processus soient indépendant.
-- Message Queue: plus complexe qu'un fifo, mais bidirectionnel. La taille ainsi que le nombre de message doit être détérminé à la création.
-- Socket: bidirectionnel mais plus complexe. 
+On choisi donc de mettre a jour la température toute les secondes, et on en profite pour mettre à jour la fréquence et le mode au cas où ils auraient changés (un restart du module?).
+la fréquence est mise à jour également si elle est modifiée lors de l'appui sur un bouton.
+le mode est mis à jour lors de l'appui sur le bouton toggle.
 
-Dans le cadre des anciens laboratoires, nous avons réalisé un socket-pair. Nous allons tester ici une implémentation avec FIFO. Afin de pouvoir envoyer mais aussi recevoir des information, nous créons 2 FIFO: `/tmp/fanctl_cmd.fifo` et `/tmp/fanctl_resp.fifo`.
-Les droits sur ces fichiers sont en read et write pour tous.
-
-==== Changement IPC
-Le problème que nous rencontrons avec les FIFO est le flush des buffers.
-Puisque nous sommes parti sur la volonté d'avoir une communication bidirectionnelle, il nous est difficile de gérer et nettoyer 2 fichiers entre les communications.
-Nous nous retrouvons avec des messages dupliqués, des boucles pour nettoyer, etc. Ce n'est pas idéal.
-Nous repartons donc sur les sockets heureusement, une bonne partie du code peut être réutilisé.
-
-
+Pour éviter d'avoir un délai de 1 seconde sur l'affichage de la nouvelle fréquence lorsqu'on passe de manual à auto, on relis la fréquence une fois que on a changé de mode.
 
 == Questionnement
 - Est ce que on ajoute un délai en auto si on est entre 2 température pour éviter que la fréquence change trop souvent? Ce serai à faire dans le module.
 
+=== Un Makefile pour les gouverner tous
+Nous créons un makefile qui compilera touts nos binaires en une seule commande et qui les installeras sur la carte.
+Pour ceci, il faut que le rootfs soit bien syncronisé en cifs comme ça a été fait dans les laboratoires précédents.
+Attention, le rootfs sur le host est situé sous `/rootfs/`.
+Le module sera installé sous `/usr/lib`, le daemon et l'application sous `/usr/bin` et le script pour lancer le daemon sous `/etc/init.d`
 
 
 == Difficulté
@@ -196,3 +189,18 @@ Il nous aurai suffit pourtant de regarder le `dmesg` où l'erreur était explici
 
 === strncmp et le sysfs
 sysfs ajoute un retour a la ligne en retournant le mode. Lors de la lecture et la comparaison du mode dans le daemon, attention a tronquer la fin de la châine de caractère. Cela nous a amené quelques déconvenues lors de la comparaison de chaine de caractère.
+
+=== IPC avec FIFO
+Nous avons plusieurs choix pour réaliser l'IPC:
+- FIFO: simple à implémenter mais unidirectionnel. Le deamon ne pourra pas répondre à la CLI pour confirmer le message, ou alors il faudra 2 FIFO.
+- Pipe: nécessite un fork et nous aimerions que nos 2 processus soient indépendant.
+- Message Queue: plus complexe qu'un fifo, mais bidirectionnel. La taille ainsi que le nombre de message doit être détérminé à la création.
+- Socket: bidirectionnel mais plus complexe. 
+
+Dans le cadre des anciens laboratoires, nous avons réalisé un socket-pair. Nous voulions tester ici une implémentation avec FIFO. Afin de pouvoir envoyer mais aussi recevoir des information, nous créons 2 FIFO: `/tmp/fanctl_cmd.fifo` et `/tmp/fanctl_resp.fifo`.
+Les droits sur ces fichiers sont en read et write pour tous.
+
+Le problème que nous rencontrons avec les FIFO est le flush des buffers.
+Puisque nous sommes parti sur la volonté d'avoir une communication bidirectionnelle, il nous est difficile de gérer et nettoyer 2 fichiers entre les communications.
+Nous nous retrouvons avec des messages dupliqués, des boucles pour nettoyer, etc. Ce n'est pas idéal.
+Nous repartons donc sur les sockets heureusement, une bonne partie du code peut être réutilisé.
