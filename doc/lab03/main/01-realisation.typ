@@ -29,6 +29,7 @@ Le daemon gère :
 - Les boutons S1, S2, S3 via interruptions GPIO
 - L'affichage sur l'écran OLED
 - La communication avec le module via sysfs
+- L'interface IPC via un socket Unix
 
 L'écran OLED affiche en temps réel :
 - La température du CPU (rafraîchie toutes les secondes)
@@ -45,6 +46,19 @@ L'écran OLED affiche en temps réel :
 )
 
 En mode auto, les boutons S1 et S2 sont ignorés.
+
+=== Application CLI (`fanctl_cli`)
+L'application CLI permet de piloter le daemon via un socket Unix (`/tmp/fanctl.sock`).
+
+#table(
+  columns: (auto, 1fr),
+  [*Commande*], [*Action*],
+  [`fanctl_cli status`], [Affiche la température, le mode et la fréquence],
+  [`fanctl_cli mode toggle`], [Bascule entre le mode auto et manuel],
+  [`fanctl_cli freq <1-20>`], [Définit la fréquence en Hz (mode manuel uniquement)],
+)
+
+Le daemon traite chaque connexion de manière indépendante : il lit la commande, l'exécute et retourne immédiatement une réponse avant de fermer la connexion.
 
 == Installation
 
