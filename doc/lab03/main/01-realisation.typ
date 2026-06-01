@@ -178,6 +178,10 @@ Le module sera installé sous `/usr/lib`, le daemon et l'application sous `/usr/
 Pour faire allumer et éteindre la led power, nous utilisons un usleep qui a le désaventage de bloquer tout le système. Dans ce projet, le temps n'est pas critique, mais l'utilisation d'un second timer serait plus propre, bien que très verbeuse. Nous avons privilegié la simplicité en maintenant notre usleep.
 
 Une autre possibilité aurait été d'utiliser un thread et de maintenir le `usleep` dans le thread, pour ne pas bloquer le thread principal mais cela amène d'autres difficultés (concurence lors de l'appui répété sur le bouton, gestion de ressource partagées, etc)
+
+== Clignotement de la led power
+La led power sert à indiquer à l'utilisateur que l'appui sur le bouton a bien été réalisé.
+Nous avons choisi de faire clignotter cette led même si l'action retounre une erreur (par exemple modifier la fréquence alors que le mode est en auto). car un retour visuel nous semble important pour signifier a l'utilisateur que son action a bien été prise en compte, même si elle ne peux pas être réalisée. Cela permet à l'utilisateur de voir que le bouton fonctionne, même si l'action désirée n'a pas pu être réalisée.
 == Difficulté
 === mauvais export
 Lors de la création du deamon, nous avons par erreur exporté la led gpui10 plustot que la led de power.

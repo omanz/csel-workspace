@@ -195,7 +195,7 @@ static void initScreen(void) {
 
 static const char* toggle_mode() 
 {
-    syslog(LOG_INFO, "toggle mode\n");
+    syslog(LOG_INFO, "toggle mode");
     // modify mode on sysfs
     const char* mode = read_mode();
     if (mode == NULL) {
@@ -208,7 +208,7 @@ static const char* toggle_mode()
     return new_mode;
 }
 
-int main(int argc, char* argv[])
+int main(void)
 {
     openlog("fanctl_daemon", LOG_PID, LOG_USER);
 
@@ -292,7 +292,6 @@ int main(int argc, char* argv[])
             }
             else if (ev[i].data.fd == k1) {           
 
-                // TODO: blink la led differemment si erreur? ou ne pas la blink? (probablement pas ne pas la blink)
                 syslog(LOG_INFO, "S1: increase frequency\n");
                 blink_power_led(led);
 
@@ -314,7 +313,7 @@ int main(int argc, char* argv[])
                     continue;
                 }
                 int new_freq = freq+1;
-                syslog(LOG_INFO, "S2: frequency increased from %d Hz to %d Hz\n", freq, new_freq );
+                syslog(LOG_INFO, "S1: frequency increased from %d Hz to %d Hz\n", freq, new_freq );
                 write_fan_freq(new_freq);
 
                 // update screen
