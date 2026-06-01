@@ -6,11 +6,13 @@
 #include <linux/device.h>
 #include <linux/thermal.h>
 
-#define LED_GPIO 10
+#define LED_GPIO    10
 #define FREQ_MIN    1
 #define FREQ_MAX    20
+#define TEMP_PERIOD 5
 
 static struct timer_list blink_timer;
+static struct timer_list temp_timer;
 static int led_state = 0;
 static int frequency  = 2;    // Hz
 static int auto_mode  = 1;    // 1=auto, 0=manual
@@ -68,7 +70,15 @@ static ssize_t mode_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(mode);  // create dev_attr_mode
 
+/* timer callback: LED blink only */
 static void blink_callback(struct timer_list *t)
+{
+    gpio_set_value(LED_GPIO, led_state);
+    mod_timer(&blink_timer, jiffies + HZ / frequency);
+}
+
+/* timer callback: temperature reading */
+static void temp_callback(struct timer_list *t)
 {
     if (auto_mode != 0) {
         int temp = get_cpu_temp();
@@ -77,9 +87,7 @@ static void blink_callback(struct timer_list *t)
         else if (temp < 45) frequency = 10;
         else frequency = 20;
     }
-    led_state = !led_state;
-    gpio_set_value(LED_GPIO, led_state);
-    mod_timer(&blink_timer, jiffies + HZ / frequency);
+    mod_timer(&temp_timer, jiffies + TEMP_PERIOD * HZ);
 }
 
 static int __init fanctl_init(void)
@@ -105,9 +113,14 @@ static int __init fanctl_init(void)
     sysfs_device = device_create(sysfs_class, NULL, 0, NULL, "fanctl");
     status = device_create_file(sysfs_device, &dev_attr_frequency);
     status = device_create_file(sysfs_device, &dev_attr_mode);
-     /* timer */
+
+    /* blink timer */
     timer_setup(&blink_timer, blink_callback, 0);
     mod_timer(&blink_timer, jiffies + HZ / frequency);
+
+    /* temperature timer */
+    timer_setup(&temp_timer, temp_callback, 0);
+    mod_timer(&temp_timer, jiffies + TEMP_PERIOD * HZ);
 
     pr_info("fanctl: module loaded, LED blinking at %dHz\n", frequency);
     return 0;
@@ -116,6 +129,7 @@ static int __init fanctl_init(void)
 static void __exit fanctl_exit(void)
 {
     del_timer_sync(&blink_timer);
+    del_timer_sync(&temp_timer);
     device_remove_file(sysfs_device, &dev_attr_mode);
     device_remove_file(sysfs_device, &dev_attr_frequency);
     device_destroy(sysfs_class, 0);

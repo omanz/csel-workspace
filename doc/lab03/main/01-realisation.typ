@@ -18,6 +18,7 @@ En mode *auto*, la fréquence est déterminée par la température du CPU :
 - < 40°C → 5 Hz
 - < 45°C → 10 Hz
 - ≥ 45°C → 20 Hz
+La température est lue toutes les secondes.
 
 En mode *manual*, la fréquence est fixée par l'utilisateur via les boutons ou l'interface IPC.
 
@@ -124,7 +125,7 @@ Pour ceci, il faut que le rootfs soit bien syncronisé en cifs comme ça a été
 Attention, le rootfs sur le host est situé sous `/rootfs/`.
 Le module sera installé sous `/usr/lib`, le daemon et l'application sous `/usr/bin` et le script pour lancer le daemon sous `/etc/init.d`
 
-=== Choix de conception
+= Choix de conception
 == Gestion des fréquences
 Dans le mode "auto", la fréquence peut prendre les valeurs de 2Hz, 5Hz, 10Hz ou 20Hz
 Or, rien n'est indiqué pour le mode manuel.
@@ -142,13 +143,14 @@ Bien qu'une représentation numérique simplifie les comparaisons côté logicie
 L'ecran fonctionne de telle sorte que on peut mettre a jour uniquement les lignes qui changent.
 
 Le taux de rafraichissement des données suceptibles de changer (température, fréquence, mode) reste a determiner.
-Nous avons pris le parti de mettre à jour ces toute les secondes. 
+Nous avons pris le parti de mettre à jour ces informations toute les secondes.
 
 Nous savons cependant que certaines données vont changer suite à l'appui sur un bouton:
 - la fréquence lors de l'appui sur les boutons pour l'incrémenter et la décrémenter
 - le mode et la fréquence lors de l'appui sur le bouton toggle. En effet, en changeant le mode de manuel à automatique, la fréquence sera suceptible de changer.
+- la reception d'une commande via l'IPS.
 
-Pour une meilleure réactivité, les éléments suceptibles de changer sont également mis à jour lors de l'appui sur le bouton correspondant.
+Pour une meilleure réactivité, les éléments suceptibles de changer sont également mis à jour lors de l'appui sur le bouton correspondant. Nous n'avons pas implémenté la mise à jour suite à la reception d'un message via l'IPS, pour éviter les effets de bord en cas de reception de messages répétés.
 
 == Gestion de la LED Power
 La led power sert à indiquer à l'utilisateur que l'appui sur le bouton a bien été réalisé.
@@ -158,17 +160,23 @@ Le clignotement est actuellement réalisé à l'aide d'un usleep(). Cette soluti
 
 Une implémentation basée sur un timer supplémentaire ou sur un thread dédié aurait permis une meilleure séparation des responsabilités au prix d'une complexité accrue.
 
-== Questionnement
-- Est ce que on ajoute un délai en auto si on est entre 2 température pour éviter que la fréquence change trop souvent? Ce serai à faire dans le module.
-
 = Perspectives d'amélioration
 - Ajouter une vérification en mode automatique afin d'éviter les changements fréquents de fréquence lorsque la température oscille autour d'un seuil.
 - Remplacer l'utilisation de usleep() dans le daemon par un mécanisme non bloquant.
 - Mettre en place des tests automatisés.
 - Gérer les erreurs des appels système (`open`, `write`, `epoll`, etc). Cela n'a pas été réalisé dans les précédent codelab et amène de la complexité et de la lourdeur sur la lisibilité du code mais est indispensable pour un projet en production.
+- Dans le daemon nous ouvrons/fermons des fichiers sysfs à chaque appel ce qui génère des syscalls et des accès mémoire dispersés. nous pourrions garder les fd ouverts en permanence, ce qui réduirait les accès mémoire.
 
-== Difficulté
-=== mauvais export
+== Optimisation
+L'application CLI est très simple et son temps d'execution dépend principalement de l'utilisation du socket. Nous n'avons pas trouvé de piste d'optimisation.
+
+Concernant le module noyau, nous avons identifié une optimisation pertinente : puisuq ele timer était partagé entre le clignottement de la led et la lecture de la température, celle-ci était effectuée à chaque tick du timer de clignotement, soit jusqu'à 20 fois par seconde en mode auto. La température du CPU ne variant pas si rapidement, nous avons séparé la logique en deux timers distincts : un timer dédié au clignotement de la LED, et un second timer lisant la température toutes les 5 secondes pour ajuster la fréquence en mode auto.
+
+Nous réalisons une courte analyse de la consommation à l'aide de `htop`. Puisque notre plateforme est dédiée à cette application, la consommation mémoire et CPU reste largement dans les limites acceptables.
+#figure(image("/lab03/resources/img/htop.png", width: 100%), caption: "Commande Htop")
+
+= Difficulté
+== mauvais export
 Lors de la création du deamon, nous avons par erreur exporté la led gpui10 plustot que la led de power.
 Nous avons corrigé notre erreur, relancé le deamon, mais la led reste exportée.
 Lorsque nous avons rechargé le module, nous obtenions l'erreur
@@ -182,10 +190,10 @@ Il nous aurai suffit pourtant de regarder le `dmesg` où l'erreur était explici
 [ 4649.442718] fanctl: failed to request gpio 10
 ```
 
-=== strncmp et le sysfs
+== strncmp et le sysfs
 sysfs ajoute un retour a la ligne en retournant le mode. Lors de la lecture et la comparaison du mode dans le daemon, attention a tronquer la fin de la châine de caractère. Cela nous a amené quelques déconvenues lors de la comparaison de chaine de caractère.
 
-=== IPC avec FIFO
+== IPC avec FIFO
 Nous avons plusieurs choix pour réaliser l'IPC:
 - FIFO: simple à implémenter mais unidirectionnel. Le deamon ne pourra pas répondre à la CLI pour confirmer le message, ou alors il faudra 2 FIFO.
 - Pipe: nécessite un fork et nous aimerions que nos 2 processus soient indépendant.
