@@ -174,7 +174,10 @@ Pour ceci, il faut que le rootfs soit bien syncronisé en cifs comme ça a été
 Attention, le rootfs sur le host est situé sous `/rootfs/`.
 Le module sera installé sous `/usr/lib`, le daemon et l'application sous `/usr/bin` et le script pour lancer le daemon sous `/etc/init.d`
 
+== Amélioration du daemon
+Pour faire allumer et éteindre la led power, nous utilisons un usleep qui a le désaventage de bloquer tout le système. Dans ce projet, le temps n'est pas critique, mais l'utilisation d'un second timer serait plus propre, bien que très verbeuse. Nous avons privilegié la simplicité en maintenant notre usleep.
 
+Une autre possibilité aurait été d'utiliser un thread et de maintenir le `usleep` dans le thread, pour ne pas bloquer le thread principal mais cela amène d'autres difficultés (concurence lors de l'appui répété sur le bouton, gestion de ressource partagées, etc)
 == Difficulté
 === mauvais export
 Lors de la création du deamon, nous avons par erreur exporté la led gpui10 plustot que la led de power.
