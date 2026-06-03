@@ -1,6 +1,5 @@
 #include <fcntl.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -17,7 +16,11 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    int sock                = socket(AF_UNIX, SOCK_STREAM, 0);
+    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock < 0) {
+        perror("socket failed");
+        return 1;
+    }
     struct sockaddr_un addr = {
         .sun_family = AF_UNIX,
     };
@@ -25,6 +28,7 @@ int main(int argc, char* argv[])
 
     if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         perror("failed to connect");
+        close(sock);
         return 1;
     }
 

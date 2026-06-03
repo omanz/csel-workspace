@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -229,13 +228,26 @@ int main(void)
 
     // IPC
     unlink(SOCKET_PATH);  // remove if exists
-    int sock_fd             = socket(AF_UNIX, SOCK_STREAM, 0);
+    int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock_fd < 0) {
+        syslog(LOG_ERR, "socket failed");
+        return EXIT_FAILURE;
+    }
     struct sockaddr_un addr = {
         .sun_family = AF_UNIX,
     };
     strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
-    bind(sock_fd, (struct sockaddr*)&addr, sizeof(addr));
-    listen(sock_fd, 5);
+    if (bind(sock_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        syslog(LOG_ERR, "bind failed: %m");
+        close(sock_fd);
+        return EXIT_FAILURE;
+    }
+
+    if (listen(sock_fd, 5) < 0) {
+        syslog(LOG_ERR, "listen failed: %m");
+        close(sock_fd);
+        return EXIT_FAILURE;
+    }
 
     int epll_fd = epoll_create1(0);
     struct epoll_event ev[5];
@@ -267,8 +279,10 @@ int main(void)
 
     // flush events after init
     struct epoll_event dummy_ev[5];
-    epoll_wait(
-        epll_fd, dummy_ev, 5, 0);  // timeout=0: non block, flush the queue
+    epoll_wait(epll_fd,
+               dummy_ev,
+               5,
+               0);  // timeout=0: non block, flush the queue
 
     syslog(LOG_INFO, "fanctl daemon started\n");
 
@@ -305,7 +319,7 @@ int main(void)
                 // check the mode
                 const char* mode = read_mode();
                 if (strcmp(mode, "auto") == 0) {
-                    syslog(LOG_WARNING, "mode is manual, button ignored");
+                    syslog(LOG_WARNING, "mode is auto, button ignored");
                     continue;
                 }
 
