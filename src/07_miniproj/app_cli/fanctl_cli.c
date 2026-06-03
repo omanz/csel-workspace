@@ -1,10 +1,10 @@
 #include <fcntl.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 #define SOCKET_PATH "/tmp/fanctl.sock"
 
@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    int sock                = socket(AF_UNIX, SOCK_STREAM, 0);
     struct sockaddr_un addr = {
         .sun_family = AF_UNIX,
     };
@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
         snprintf(cmd, sizeof(cmd), "%s", argv[1]);
 
     write(sock, cmd, strlen(cmd));
-   
+
     char resp[64] = {0};
     read(sock, resp, sizeof(resp) - 1);
     printf("%s\n", resp);
