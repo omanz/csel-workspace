@@ -2,15 +2,13 @@
 #pagebreak()
 
 = Synthèse sur ce qui a été appris/exercé
-Ce laboratoire nous a permis de mettre en pratique plusieurs aspects essentiels au développement de systèmes linux.
-Tout d'abord, cela nous a permis de remettre en pratique les notions que nous avons abordées tout au long du semestre, en les intégrant dans un projet concret. Nous avons ainsi pu revoir et approfondir des concepts tels que les modules noyau, les daemons userspace, les interfaces de communication entre le noyau et l'espace utilisateur, ainsi que la gestion des périphériques.
-
-En travaillant sur ce projet, nous avons également pu voir comment faire fonctionner l'écran OLED. Même si nous avons utilisé un pilote basique fourni, cela nous a permis de comprendre les étapes nécessaires pour intégrer un nouveau périphérique dans le système, ainsi que les défis associés à la gestion de l'affichage et à la communication avec le matériel. 
+Ce laboratoire nous a permis d'intégrer dans un projet cohérent les différentes briques vues au cours du semestre : développement d'un module noyau avec timers et sysfs, communication entre le noyau et l'espace utilisateur, gestion de périphériques via GPIO, et IPC entre processus.
+L'intégration de l'écran OLED a nécessité la modification du Device Tree pour exposer le bus I2C correspondant, illustrant concrètement le lien entre la description matérielle et les interfaces disponibles en espace utilisateur.
 
 = Remarques et choses à retenir
-Nous retienderons que la mise en place d'un projet de cette envergure nécessite une bonne organisation et une planification rigoureuse. Il est important de bien comprendre les différentes composantes du système et de savoir comment elles interagissent entre elles. 
+Nous retienderons que la mise en place d'un projet de cette envergure nécessite une bonne organisation. Il est important de bien comprendre les différentes composants du système et de savoir comment ils interagissent entre eux. Nous avons également vu que les choix de conception faits tôt ont des répercussions sur l'ensemble du développement. Par exemple, exposer le mode en chaîne de caractères (`auto`/`manual`) plutôt qu'en entier rend l'interface sysfs plus lisible, mais implique un traitement supplémentaire côté daemon lors de la comparaison des valeurs.
 
-Nous avons également appris que la réutilisation de code et de concepts déjà abordés peut grandement faciliter le développement, tout en renforçant notre compréhension globale du système.
+Nous avons également vu que la réutilisation de code et de concepts déjà abordés peut grandement faciliter le développement, tout en renforçant notre compréhension globale du système.
 
 #pagebreak()
 
