@@ -30,6 +30,23 @@ static int get_cpu_temp(void)
     return temp / 1000;  // millidegree to degree
 }
 
+/* timer callback: temperature reading */
+static void temp_callback(struct timer_list* t)
+{
+    if (auto_mode != 0) {
+        int temp = get_cpu_temp();
+        if (temp < 35)
+            frequency = 2;
+        else if (temp < 40)
+            frequency = 5;
+        else if (temp < 45)
+            frequency = 10;
+        else
+            frequency = 20;
+    }
+    mod_timer(&temp_timer, jiffies + TEMP_PERIOD * HZ);
+}
+
 /* frequency */
 static ssize_t frequency_show(struct device* dev,
                               struct device_attribute* attr,
@@ -65,8 +82,11 @@ static ssize_t mode_store(struct device* dev,
                           const char* buf,
                           size_t count)
 {
-    if (sysfs_streq(buf, "auto"))
+    if (sysfs_streq(buf, "auto")) {
         auto_mode = 1;
+        temp_callback(NULL); // update frequency
+        mod_timer(&blink_timer, jiffies + HZ / frequency);  // apply immediatly the change if we come from manual to auto
+    }
     else if (sysfs_streq(buf, "manual"))
         auto_mode = 0;
     else
@@ -81,23 +101,6 @@ static void blink_callback(struct timer_list* t)
     led_state = !led_state;
     gpio_set_value(LED_GPIO, led_state);
     mod_timer(&blink_timer, jiffies + HZ / frequency);
-}
-
-/* timer callback: temperature reading */
-static void temp_callback(struct timer_list* t)
-{
-    if (auto_mode != 0) {
-        int temp = get_cpu_temp();
-        if (temp < 35)
-            frequency = 2;
-        else if (temp < 40)
-            frequency = 5;
-        else if (temp < 45)
-            frequency = 10;
-        else
-            frequency = 20;
-    }
-    mod_timer(&temp_timer, jiffies + TEMP_PERIOD * HZ);
 }
 
 static int __init fanctl_init(void)
