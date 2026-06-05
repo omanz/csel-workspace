@@ -64,6 +64,7 @@ Le daemon traite chaque connexion de manière indépendante : il lit la commande
 == Prérequis
 - Le device tree OLED doit être installé sur la cible et la carte redémarrée
 - Le rootfs de la cible doit être synchronisé via CIFS sur le host sous `/rootfs/`
+- Le script de boot U-Boot doit être `boot.cifs` (voir le laboratoire de préparation "Environnement Linux embarqué").
 
 == Compilation et installation
 Depuis le host, à la racine du projet :
