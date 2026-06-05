@@ -172,8 +172,8 @@ L'application CLI est très simple et son temps d'execution dépend principaleme
 
 Concernant le module noyau, nous avons identifié une optimisation pertinente : puisque le timer était partagé entre le clignottement de la led et la lecture de la température, celle-ci était effectuée à chaque tick du timer de clignotement, soit jusqu'à 20 fois par seconde en mode auto. La température du CPU ne variant pas si rapidement, nous avons séparé la logique en deux timers distincts : un timer dédié au clignotement de la LED, et un second timer lisant la température toutes les 5 secondes pour ajuster la fréquence en mode auto.
 
-Nous réalisons une courte analyse de la consommation à l'aide de `htop`. Puisque notre plateforme est dédiée à cette application, la consommation mémoire et CPU reste largement dans les limites acceptables.
-#figure(image("/lab03/resources/img/htop.png", width: 100%), caption: "Commande Htop")
+Nous réalisons une courte analyse de la consommation à l'aide de `htop` (@htop). Puisque notre plateforme est dédiée à cette application, la consommation mémoire et CPU reste largement dans les limites acceptables.
+#figure(image("/lab03/resources/img/htop.png", width: 100%), caption: "Commande Htop") <htop>
 
 = Difficulté
 == mauvais export
