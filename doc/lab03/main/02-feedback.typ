@@ -2,8 +2,8 @@
 #pagebreak()
 
 = Synthèse sur ce qui a été appris/exercé
-Ce laboratoire nous a permis d'intégrer dans un projet cohérent les différentes briques vues au cours du semestre : développement d'un module noyau avec timers et sysfs, communication entre le noyau et l'espace utilisateur, gestion de périphériques via GPIO, et IPC entre processus.
-L'intégration de l'écran OLED a nécessité la modification du Device Tree pour exposer le bus I2C correspondant, illustrant concrètement le lien entre la description matérielle et les interfaces disponibles en espace utilisateur.
+Ce laboratoire nous a permis d'intégrer dans un projet cohérent les différentes briques vues au cours du semestre : développement d'un module noyau avec timers et sysfs, communication entre le noyau et l'espace utilisateur, gestion de périphériques via _GPIO_, et _IPC_ entre processus.
+L'intégration de l'écran OLED a nécessité la modification du _Device Tree_ pour exposer le bus _I2C_ correspondant, illustrant concrètement le lien entre la description matérielle et les interfaces disponibles en espace utilisateur.
 
 = Remarques et choses à retenir
 Nous retienderons que la mise en place d'un projet de cette envergure nécessite une bonne organisation. Il est important de bien comprendre les différentes composants du système et de savoir comment ils interagissent entre eux. Nous avons également vu que les choix de conception faits tôt ont des répercussions sur l'ensemble du développement. Par exemple, exposer le mode en chaîne de caractères (`auto`/`manual`) plutôt qu'en entier rend l'interface sysfs plus lisible, mais implique un traitement supplémentaire côté daemon lors de la comparaison des valeurs.
