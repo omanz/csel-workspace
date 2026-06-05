@@ -78,6 +78,7 @@ static DEVICE_ATTR_RW(mode);  // create dev_attr_mode
 /* timer callback: LED blink only */
 static void blink_callback(struct timer_list* t)
 {
+    led_state = !led_state;
     gpio_set_value(LED_GPIO, led_state);
     mod_timer(&blink_timer, jiffies + HZ / frequency);
 }
