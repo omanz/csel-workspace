@@ -9,8 +9,8 @@ Ce projet est une application permettant de simuler la gestion de la vitesse de 
 L'application est composée de trois parties principales : un module noyau, un daemon userspace et une application qui fournit une interface utilisateur en ligne de commande.
 
 == Module noyau (`fanctl.ko`)
-Le module noyau gère la LED status (gpio10) et expose deux attributs via sysfs :
-- `/sys/class/fanctl/fanctl/frequency` : fréquence de clignotement de la LED, de 1 à 20 Hz
+Le module noyau gère la LED status (_gpio10_) et expose deux attributs via _sysfs_ :
+- `/sys/class/fanctl/fanctl/frequency` : fréquence de clignotement de la _LED_, de 1 à 20 Hz
 - `/sys/class/fanctl/fanctl/mode` : mode de fonctionnement (`auto` ou `manual`)
 
 En mode *auto*, la fréquence est déterminée par la température du CPU :
@@ -24,8 +24,8 @@ En mode *manual*, la fréquence est fixée par l'utilisateur via les boutons ou 
 
 == Daemon userspace (`fanctl_daemon`)
 Le daemon gère :
-- La LED power (gpio362): clignote lors de chaque appui bouton
-- Les boutons S1, S2, S3 via interruptions GPIO
+- La LED power (_gpio362_): clignote lors de chaque appui bouton
+- Les boutons _S1, S2, S3_ via interruptions GPIO
 - L'affichage sur l'écran OLED
 - La communication avec le module via sysfs
 - L'interface IPC via un socket Unix
@@ -87,7 +87,7 @@ Les logs du daemon sont disponibles avec la commande `tail -f /var/log/messages`
 == Intégration de l'écran OLED
 L'intégration de l'écran OLED nécessite l'installation d'un Device Tree spécifique sur la cible.
 Nous utilisons pour cela le projet `oled` fourni. Après compilation, nous transférons le dts comme suit:
-```
+```bash
 mount /dev/mmcblk2p1 /mnt/boot
 ls /mnt/boot/
 cp /mnt/boot/nanopi-neo-plus2.dtb /mnt/boot/nanopi-neo-plus2.dtb.bak
@@ -96,10 +96,11 @@ umount /mnt/boot
 reboot
 ```
 Une fois redémarré, nous testons la présence du endpoint:
-```
+```bash
 # ls /dev/i2c-*
 /dev/i2c-0
 ```
+
 Nous testons avec succès le programme de demo `/workspace/src/07_miniproj/oled/oled`. Le texte attendu s'affiche à l'écran.
 
 == Développement du module noyau
@@ -174,20 +175,37 @@ L'application CLI est très simple et son temps d'execution dépend principaleme
 Concernant le module noyau, nous avons identifié une optimisation pertinente : puisque le timer était partagé entre le clignottement de la led et la lecture de la température, celle-ci était effectuée à chaque tick du timer de clignotement, soit jusqu'à 20 fois par seconde en mode auto. La température du CPU ne variant pas si rapidement, nous avons séparé la logique en deux timers distincts : un timer dédié au clignotement de la LED, et un second timer lisant la température toutes les 5 secondes pour ajuster la fréquence en mode auto.
 
 Nous réalisons une courte analyse de la consommation à l'aide de `htop` (@htop). Puisque notre plateforme est dédiée à cette application, la consommation mémoire et CPU reste largement dans les limites acceptables.
-#figure(image("/lab03/resources/img/htop.png", width: 100%), caption: "Commande Htop") <htop>
+#figure(```bash
+    0[ *                          0.0%] Tasks: 8, 0 thr, 88 kthr; 1 running
+    1[                            0.0%] Load average: 0.00 0.10 0.07 
+    2[*                           0.7%] Uptime: 01:21:25
+    3[                            0.0%]
+  Mem[|||*@@@               29.8M/474M]
+  Swp[                           0K/0K]
 
+  [Main] [I/O]
+  PID USER       PRI  NI  VIRT   RES   SHR S  CPU%-MEM%   TIME+  Command        
+  265 root        20   0  1876   204   164 S   0.7  0.0  0:14.63 /usr/bin/fanctl
+  278 root        20   0  3060  2164  1808 R   0.7  0.4  0:00.12 htop
+    1 root        20   0  2688   324   260 S   0.0  0.1  0:01.76 init
+  160 root        20   0  2688   316   268 S   0.0  0.1  0:00.01 /sbin/syslogd -
+  164 root        20   0  2688   316   268 S   0.0  0.1  0:00.01 /sbin/klogd -n
+  176 root        20   0  3076  2240  1772 S   0.0  0.5  0:00.15 /sbin/mdev -df
+  248 root        20   0  6156  1924  1404 S   0.0  0.4  0:00.00 sshd: /usr/sbin
+  252 root        20   0  2688  1908  1740 S   0.0  0.4  0:00.07 -sh
+```, caption: "Commande Htop",kind: "code", supplement: [Code]) <htop>
 = Difficulté
-== mauvais export
+== Mauvais export
 Lors de la création du deamon, nous avons par erreur exporté la led gpui10 plutôt que la led de power.
 Nous avons corrigé notre erreur, relancé le deamon, mais la led reste exportée.
 Lorsque nous avons rechargé le module, nous obtenions l'erreur
-```
+```bash
 # insmod fanctl.ko 
 insmod: can't insert 'fanctl.ko': Device or resource busy
 ```
 Nous avons pris un moment pour comprendre que l'erreur venait de la led qui était déjà exporté dans le sysfs. Il suffisait alors de la désexporter: `echo 10 > /sys/class/gpio/unexport` mais l'analyse nous a pris du temps.
 Il nous aurai suffit pourtant de regarder le `dmesg` où l'erreur était explicite
-```
+```bash
 [ 4649.442718] fanctl: failed to request gpio 10
 ```
 
